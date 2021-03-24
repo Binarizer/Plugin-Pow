@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -30,7 +31,7 @@ namespace PathOfWuxia
         public static void ModExt_InitBattle(WuxiaBattleManager __instance, IDataProvider data, IResourceProvider resource)
         {
             // 整体替换 SummonProcessStrategy 类
-            Traverse.Create(__instance).Field("summonProcess").SetValue(new DualSummonProcessStrategy(__instance, data, resource));
+            Traverse.Create(__instance).Field("summonProcess").SetValue(new ModSummonProcessStrategy(__instance, data, resource));
         }
 
         // 2 休息时Buff回调
@@ -295,9 +296,14 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(DataManager), "Inital")]
         static void ModExt_NewProps_DefaultData(DataManager __instance)
         {
-            Dictionary<string, Props> dictionary = __instance.Get<Props>();
-            Dictionary<string, Skill> dictionary4 = __instance.Get<Skill>();
-            Dictionary<string, Mantra> dictionary2 = __instance.Get<Mantra>();
+            //Dictionary<string, Props> dictionary = __instance.Get<Props>();
+            //Dictionary<string, Skill> dictionary4 = __instance.Get<Skill>();
+            //Dictionary<string, Mantra> dictionary2 = __instance.Get<Mantra>();
+
+            var dict = Traverse.Create(__instance).Field("dict").GetValue<IDictionary<Type, IDictionary>>();
+            IDictionary dictionary = dict[typeof(Props)];
+            IDictionary dictionary4 = dict[typeof(Skill)];
+            IDictionary dictionary2 = dict[typeof(Mantra)];
             // 添加武功秘籍
             foreach (Skill skill in dictionary4.Values)
             {
@@ -335,8 +341,8 @@ namespace PathOfWuxia
                 dictionary.Add(props2.Id, props2);
             }
             // 添加人物加入道具
-            Dictionary<string, Npc> dictionary5 = __instance.Get<Npc>();
-            Dictionary<string, Reward> dictionary3 = __instance.Get<Reward>();
+            IDictionary dictionary5 = dict[typeof(Npc)];
+            IDictionary dictionary3 = dict[typeof(Reward)];
             foreach (Npc npc in dictionary5.Values)
             {
                 Props props3 = new Props

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Text;
 using System.Timers;
 using HarmonyLib;
 using UnityEngine;
@@ -14,6 +16,7 @@ using Heluo.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
 using FileHelpers;
+using Newtonsoft.Json;
 
 namespace PathOfWuxia
 {
@@ -40,14 +43,14 @@ namespace PathOfWuxia
         static ConfigEntry<string> modTalkVoicePath;
 
         // 最简单的方式：更改ExternalResourceProvider的外部路径，但无法加载音乐
+        // 尝试过挂接泛型函数T Load<T>(string)，但不好用，他总会使用最后一个类的泛型注入导致其他类型无法读取，为Harmony固有问题。
         //[HarmonyPostfix, HarmonyPatch(typeof(ExternalResourceProvider), MethodType.Constructor, new Type[] { typeof(ICoroutineRunner), typeof(Heluo.Mod.IModManager) })]
         //public static void ModPatch_Constructor(ExternalResourceProvider __instance)
         //{
         //    Traverse.Create(__instance).Field("ExternalDirectory").SetValue(modPath.Value);
         //}
 
-        // 尝试过挂接泛型函数T Load<T>(string)，但不好用，他总会使用最后一个类的泛型注入导致其他类型无法读取，为Harmony固有问题。
-        // 故使用插件的新类（抄的ExternalResourceProvider）加载外部资源，用于加载音乐等资源，绕过泛型的坑
+        // 更换 ExternalResourceProvider 为 ModResourceProvider
         [HarmonyPostfix, HarmonyPatch(typeof(ResourceManager), "Reset", new Type[] { typeof(ICoroutineRunner), typeof(Heluo.Mod.IModManager), typeof(Type[]) })]
         public static void ModPatch_Reset(ResourceManager __instance, ICoroutineRunner runner)
         {
@@ -69,55 +72,94 @@ namespace PathOfWuxia
         }
 
         // 1 Mod支持增删表格
-        [HarmonyPostfix, HarmonyPatch(typeof(DataManager), "ReadData", new Type[] { typeof(string) })]
-        public static void ModPatch_DataAppendRemove(ref DataManager __instance, string path)
+        [HarmonyPrefix, HarmonyPatch(typeof(DataManager), "ReadData", new Type[] { typeof(string) })]
+        public static bool ModPatch_ReadData(ref DataManager __instance, string path)
         {
-            var dict = Traverse.Create(__instance).Field("dict").GetValue() as Dictionary<Type, System.Collections.IDictionary>;
+            var dict = Traverse.Create(__instance).Field("dict");
+            var resource = Traverse.Create(__instance).Field("resource").GetValue<IResourceProvider>();
+            path = __instance.CheckPath(path);
+            dict.SetValue( new Dictionary<Type, IDictionary>() );
             Type type = typeof(Item);
-            foreach (Type itemType in from t in type.Assembly.GetTypes() where t.IsSubclassOf(type) && !t.HasAttribute<Hidden>(false) select t)
+            foreach (Type itemType in from t in type.Assembly.GetTypes()
+                                   where t.IsSubclassOf(type) && !t.HasAttribute<Hidden>(false)
+                                   select t)
             {
-                if (!itemType.HasAttribute<JsonConfig>(false) && dict.ContainsKey(itemType))
+                Type typeItemDic = typeof(CsvDataSource<>).MakeGenericType(new Type[]
                 {
-                    Type csvType = typeof(CsvDataSource<>).MakeGenericType(new Type[] { itemType });
-                    var dic = dict[itemType];
-                    Console.WriteLine("dic=" + dic);
-                    try
+                    itemType
+                });
+                try
+                {
+                    byte[] fileData = null;
+                    IDictionary itemDic;
+                    if (!itemType.HasAttribute<JsonConfig>())
                     {
-                        byte[] array3 = Game.Resource.LoadBytes(path + itemType.Name + "_modify.txt");
-                        if (array3 != null)
+                        fileData = resource.LoadBytes(path + itemType.Name + ".txt");
+                    }
+                    if (fileData != null)
+                    {
+                        // 主数据 *.txt
+                        itemDic = (Activator.CreateInstance(typeItemDic, new object[]{ fileData }) as IDictionary);
+
+                        // 补充数据 *_modify.txt
+                        byte[] fileDataModify = resource.LoadBytes(path + itemType.Name + "_modify.txt");
+                        if (fileDataModify != null)
                         {
-                            var dicModify = (Activator.CreateInstance(csvType, new object[]
+                            IDictionary dicModify = (Activator.CreateInstance(typeItemDic, new object[]
                             {
-                                    array3
-                            }) as System.Collections.IDictionary);
+                                fileDataModify
+                            }) as IDictionary);
                             foreach (var key in dicModify.Keys)
                             {
-                                if (dic.Contains(key))
-                                    dic[key] = dicModify[key];
+                                if (itemDic.Contains(key))
+                                    itemDic[key] = dicModify[key];
                                 else
-                                    dic.Add(key, dicModify[key]);
+                                    itemDic.Add(key, dicModify[key]);
                             }
                         }
-
-                        byte[] array4 = Game.Resource.LoadBytes(path + itemType.Name + "_remove.txt");
-                        if (array4 != null)
+                        // 删除数据 *_remove.txt
+                        byte[] fileDataRemove = resource.LoadBytes(path + itemType.Name + "_remove.txt");
+                        if (fileDataRemove != null)
                         {
-                            var dicRemove = (Activator.CreateInstance(csvType, new object[]
+                            IDictionary dicRemove = (Activator.CreateInstance(typeItemDic, new object[]
                             {
-                                    array4
-                            }) as System.Collections.IDictionary);
+                                fileDataRemove
+                            }) as IDictionary);
                             foreach (var key in dicRemove.Keys)
                             {
-                                if (dic.Contains(key))
-                                    dic.Remove(key);
+                                if (itemDic.Contains(key))
+                                    itemDic.Remove(key);
                             }
                         }
                     }
-                    catch (ConvertException ex)
+                    else
                     {
-                        Debug.LogError(string.Concat(new object[]
+                        // json文件 *.json
+                        byte[] jsonData = resource.LoadBytes("Config/" + itemType.Name + ".json");
+                        if (jsonData != null)
                         {
-                        "增删 ",
+                            string @string = Encoding.UTF8.GetString(jsonData);
+                            typeItemDic = typeof(Dictionary<,>).MakeGenericType(new Type[]
+                            {
+                            typeof(string),
+                            itemType
+                            });
+                            itemDic = (JsonConvert.DeserializeObject(@string, typeItemDic) as IDictionary);
+                        }
+                        else
+                        {
+                            // 没有对应文件
+                            Debug.Log("没找到该类型的数据：" + itemType.ToString());
+                            continue;
+                        }
+                    }
+                    dict.GetValue<IDictionary>().Add(itemType, itemDic);
+                }
+                catch (ConvertException ex)
+                {
+                    Debug.LogError(string.Concat(new object[]
+                    {
+                        "解析 ",
                         itemType.Name,
                         " 時發生錯誤 !!\r\n行數 : ",
                         ex.LineNumber,
@@ -129,11 +171,22 @@ namespace PathOfWuxia
                         ex.FieldName,
                         "\r\n",
                         ex
-                        }));
-                    }
+                    }));
+                }
+                catch (Exception ex2)
+                {
+                    Debug.LogError(string.Concat(new object[]
+                    {
+                        "解析 ",
+                        itemType.Name,
+                        " 時發生錯誤 !!\r\n",
+                        ex2
+                    }));
                 }
             }
+            return false;
         }
+
         // 2 修改主题音乐
         [HarmonyPrefix, HarmonyPatch(typeof(MusicPlayer), "ChangeMusic", new Type[] { typeof(string), typeof(float), typeof(float), typeof(bool), typeof(bool), typeof(bool) })]
         public static bool ModPatch_ChangeTheme(ref string _name)

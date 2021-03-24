@@ -10,9 +10,9 @@ using UnityEngine;
 
 namespace PathOfWuxia
 {
-    public class DualSummonProcessStrategy : BattleProcessStrategy
+    public class ModSummonProcessStrategy : BattleProcessStrategy
     {
-        public DualSummonProcessStrategy(WuxiaBattleManager manager, IDataProvider data, IResourceProvider resource) : base(manager, data, resource)
+        public ModSummonProcessStrategy(WuxiaBattleManager manager, IDataProvider data, IResourceProvider resource) : base(manager, data, resource)
         {
         }
 

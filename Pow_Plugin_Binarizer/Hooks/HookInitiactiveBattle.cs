@@ -15,17 +15,17 @@ using System.Reflection.Emit;
 namespace PathOfWuxia
 {
     // 半即时战斗 todo
-    public class HookInitactiveBattle : IHook
+    public class HookInitiactiveBattle : IHook
     {
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            initactiveBattle = plugin.Config.Bind<bool>("扩展功能", "半即时战斗", false, "开关时序制半即时战斗系统（未完成）");
+            initiactiveBattle = plugin.Config.Bind<bool>("扩展功能", "半即时战斗", false, "开关时序制半即时战斗系统（未完成）");
         }
 
         public void OnUpdate()
         {
         }
 
-        private static ConfigEntry<bool> initactiveBattle;
+        private static ConfigEntry<bool> initiactiveBattle;
     }
 }

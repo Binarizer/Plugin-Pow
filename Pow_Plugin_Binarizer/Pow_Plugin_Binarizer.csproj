@@ -318,13 +318,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Hooks\HookInitactiveBattle.cs" />
+    <Compile Include="GameExtensions\ModDataManager.cs" />
+    <Compile Include="Hooks\HookUniqueItem.cs" />
+    <Compile Include="Hooks\HookInitiactiveBattle.cs" />
     <Compile Include="Hooks\IHook.cs" />
     <Compile Include="Hooks\HookFeaturesAndFixes.cs" />
     <Compile Include="Hooks\HookModExtensions.cs" />
     <Compile Include="GameExtensions\Randomizer.cs" />
     <Compile Include="GameExtensions\RewardRandomProps.cs" />
-    <Compile Include="GameExtensions\DualSummonProcessStrategy.cs" />
+    <Compile Include="GameExtensions\ModSummonProcessStrategy.cs" />
     <Compile Include="GameExtensions\AddUnitHelper.cs" />
     <Compile Include="GameExtensions\NewPropsEffects.cs" />
     <Compile Include="GameExtensions\NewBuffers.cs" />

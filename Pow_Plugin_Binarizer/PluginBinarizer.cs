@@ -28,12 +28,14 @@ namespace PathOfWuxia
             RegisterHook(new HookFeaturesAndFixes());
             RegisterHook(new HookMoreAccessories());
             RegisterHook(new HookModExtensions());
-            RegisterHook(new HookInitactiveBattle());
+            RegisterHook(new HookUniqueItem());
+            RegisterHook(new HookInitiactiveBattle());
         }
 
         void Start()
         {
             Console.WriteLine("美好的第一帧开始");
+            Console.WriteLine("Game.Data = " + Heluo.Game.Data.GetType());
         }
 
         void Update()
