@@ -1,5 +1,4 @@
-﻿// Mod数据随机类
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -10,6 +9,7 @@ using MoonSharp.Interpreter;
 
 namespace PathOfWuxia
 {
+    // Mod数据随机类
     public static class Randomizer
     {
         public static T GetOneFromData<T>( string pattern ) where T: Item

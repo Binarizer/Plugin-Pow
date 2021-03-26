@@ -40,6 +40,7 @@ namespace PathOfWuxia
             RegisterHook(new HookMoreAccessories());
             RegisterHook(new HookModExtensions());
             RegisterHook(new HookUniqueItem());
+            RegisterHook(new HookSkillExp());
             RegisterHook(new HookInitiactiveBattle());
         }
 

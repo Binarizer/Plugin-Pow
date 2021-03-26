@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using BepInEx;
 using BepInEx.Configuration;
@@ -178,6 +179,30 @@ namespace PathOfWuxia
             }
         }
 
-        // 6 todo: 显示需要多少点一次修炼到10
+        // 6 CtrlTeamMember的下标写错
+        [HarmonyPrefix, HarmonyPatch(typeof(CtrlTeamMember), "UpdateProperty", new Type[] { typeof(List<CharacterMapping>) })]
+        public static bool CtrlTeamMemberFix_UpdateProperty(CtrlTeamMember __instance, List<CharacterMapping> characterMapping)
+        {
+            List<PartyInfo> list = new List<PartyInfo>();
+            foreach (CharacterMapping characterMapping2 in characterMapping)
+            {
+                CharacterInfoData characterInfoData = Game.GameData.Character[characterMapping2.InfoId];
+                CharacterExteriorData characterExteriorData = Game.GameData.Exterior[characterMapping2.ExteriorId];
+                list.Add(new PartyInfo
+                {
+                    Protrait = characterExteriorData.Protrait,
+                    Element = characterInfoData.Element,
+                    FullName = characterExteriorData.SurName + characterExteriorData.Name,
+                    Hp = (float)characterInfoData.Property[CharacterProperty.HP].Value,
+                    MaxHp = (float)characterInfoData.Property[CharacterProperty.Max_HP].Value,
+                    Mp = (float)characterInfoData.Property[CharacterProperty.MP].Value,
+                    MaxMp = (float)characterInfoData.Property[CharacterProperty.Max_MP].Value
+                });
+            }
+            Traverse.Create(__instance).Field("view").GetValue<UITeamMember>().UpdateProperty(list);
+            return false;
+        }
+
+        // 7 todo: 显示需要多少点一次修炼到10
     }
 }
