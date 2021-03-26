@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 using BepInEx;
@@ -20,11 +22,21 @@ namespace PathOfWuxia
     {
         public void OnRegister(BaseUnityPlugin plugin)
         {
+            // 7 添加扩展GameAction
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            modActionTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(GameAction)) select t).ToList();
+            Console.WriteLine("Mod添加GameAction:");
+            foreach (var t in modActionTypes)
+            {
+                Console.WriteLine(t.Name.ToString());
+            }
         }
 
         public void OnUpdate()
         {
         }
+
+        static List<Type> modActionTypes;
 
         // 1 多重召唤
         [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleManager), "InitBattle", new Type[] { typeof(Heluo.FSM.Battle.BattleStateMachine), typeof(string), typeof(IDataProvider), typeof(IResourceProvider), typeof(Action<BillboardArg>) })]
@@ -42,36 +54,12 @@ namespace PathOfWuxia
         }
 
         // 3 秘籍类、奖励类物品扩展
-        [HarmonyPostfix, HarmonyPatch(typeof(CustomEffectConverter<PropsEffectType, PropsEffect>), "CreateCustomEffect", new Type[] { typeof(string[]) })]
-        public static void ModExt_NewPropsEffect(string[] from, ref object __result)
+        [HarmonyPrefix, HarmonyPatch(typeof(CustomEffectConverter<PropsEffectType, PropsEffect>), "CreateCustomEffect", new Type[] { typeof(string[]) })]
+        public static bool ModExt_NewPropsEffect(string[] from, ref object __result)
         {
-            if (__result == null)
-            {
-                try
-                {
-                    PropsEffectType_Ext type = (PropsEffectType_Ext)(Enum.Parse(typeof(PropsEffectType_Ext), from[0].Trim()));
-                    switch (type)
-                    {
-                        case PropsEffectType_Ext.LearnSkill:
-                            __result = new PropsLearnSkill(from[1].Trim());
-                            break;
-                        case PropsEffectType_Ext.LearnMantra:
-                            __result = new PropsLearnMantra(from[1].Trim());
-                            break;
-                        case PropsEffectType_Ext.Reward:
-                            __result = new PropsReward(from[1].Trim());
-                            break;
-                        case PropsEffectType_Ext.Talk:
-                            __result = new PropsTalk(from[1].Trim());
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                catch (Exception)
-                {
-                }
-            }
+            // 使用包含扩展的方法读取
+            __result = PropsEffectFormatter.Instance.Create(from);
+            return false;
         }
         public static CharacterMapping UICharacterMapping()
         {
@@ -381,6 +369,7 @@ namespace PathOfWuxia
             {
                 int tile = tileNumber;
                 AddUnitHelper.ProcessCellNumber(__instance, ref tile);
+                AddUnitHelper.ProcessUnitId(__instance, ref unitid);
                 try
                 {
                     WuxiaUnit wuxiaUnit = __instance.UnitGenerator.CreateUnit(unitid, faction, tile, isParty);
@@ -409,16 +398,25 @@ namespace PathOfWuxia
             return false;
         }
 
-        // 7 随机物品
-        [HarmonyPrefix, HarmonyPatch(typeof(ActionListener), "GetTypeByText", new Type[] { typeof(string) })]
-        static bool ModExt_AddActions(ActionListener __instance, string s, ref Type __result)
+        // 7 GameAction扩展
+        [HarmonyPostfix, HarmonyPatch(typeof(ActionListener), "GetTypeByText", new Type[] { typeof(string) })]
+        static void ModExt_AddActions(ActionListener __instance, string s, ref Type __result)
         {
-            if (s == "RewardRandomProps" || s == "\"RewardRandomProps\"")
+            if (__result == null)
             {
-                __result = typeof(RewardRandomProps);
-                return false;
+                if (s.Length > 0)
+                {
+                    if (s[0] == '"')
+                    {
+                        s = s.Trim(new char[]{'"'});
+                    }
+                    Type action = modActionTypes.Find((Type item) => item.Name == s);
+                    if (action != null)
+                    {
+                        __result = action;
+                    }
+                }
             }
-            return true;
         }
     }
 }

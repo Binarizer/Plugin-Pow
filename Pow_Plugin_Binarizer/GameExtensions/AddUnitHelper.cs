@@ -1,4 +1,5 @@
 ﻿// Mod用随机战场布局辅助类
+using System;
 using System.Collections.Generic;
 using Heluo.Battle;
 using Heluo.Data;
@@ -34,6 +35,13 @@ namespace PathOfWuxia
                 }
             }
             return list;
+        }
+        public static void ProcessUnitId(WuxiaBattleManager m, ref string id)
+        {
+            Console.WriteLine("id="+id);
+            Npc npc = Randomizer.GetOneFromData<Npc>(id);
+            if ( npc != null )
+                id = npc.Id;
         }
 
         public static void ProcessCellNumber(WuxiaBattleManager m, ref int num)

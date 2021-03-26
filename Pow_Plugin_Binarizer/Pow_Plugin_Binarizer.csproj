@@ -67,6 +67,10 @@
       <HintPath>G:\Steam\steamapps\common\PathOfWuxia\PathOfWuxia_Data\Managed\Ionic.Zip.Reduced.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="MessagePack">
+      <HintPath>G:\Steam\steamapps\common\PathOfWuxia\PathOfWuxia_Data\Managed\MessagePack.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="MoonSharp.Interpreter">
       <HintPath>G:\Steam\steamapps\common\PathOfWuxia\PathOfWuxia_Data\Managed\MoonSharp.Interpreter.dll</HintPath>
       <Private>False</Private>
@@ -318,7 +322,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GameExtensions\PropsEffectFormatter.cs" />
     <Compile Include="GameExtensions\ModDataManager.cs" />
+    <Compile Include="GameExtensions\ModExtensionSaveData.cs" />
+    <Compile Include="GameExtensions\RewardUniquePropsFromProps.cs" />
+    <Compile Include="GameExtensions\RewardUniqueEquipByValue.cs" />
+    <Compile Include="GameExtensions\RewardUniqueScroll.cs" />
     <Compile Include="Hooks\HookUniqueItem.cs" />
     <Compile Include="Hooks\HookInitiactiveBattle.cs" />
     <Compile Include="Hooks\IHook.cs" />
@@ -328,7 +337,7 @@
     <Compile Include="GameExtensions\RewardRandomProps.cs" />
     <Compile Include="GameExtensions\ModSummonProcessStrategy.cs" />
     <Compile Include="GameExtensions\AddUnitHelper.cs" />
-    <Compile Include="GameExtensions\NewPropsEffects.cs" />
+    <Compile Include="GameExtensions\PropsEffectExtensions.cs" />
     <Compile Include="GameExtensions\NewBuffers.cs" />
     <Compile Include="Hooks\HookModSupport.cs" />
     <Compile Include="Hooks\HookNewGame.cs" />

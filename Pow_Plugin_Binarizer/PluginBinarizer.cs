@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Text;
 using HarmonyLib;
 using BepInEx;
+using MessagePack;
+using Newtonsoft.Json;
 
 namespace PathOfWuxia
 {
@@ -17,6 +19,15 @@ namespace PathOfWuxia
         }
 
         private List<IHook> hooks = new List<IHook>();
+
+        [MessagePackObject]
+        public class Test
+        {
+            [Key(0)]
+            public string ts;
+            [Key(1)]
+            public float f;
+        }
 
         void Awake()
         {
@@ -35,7 +46,6 @@ namespace PathOfWuxia
         void Start()
         {
             Console.WriteLine("美好的第一帧开始");
-            Console.WriteLine("Game.Data = " + Heluo.Game.Data.GetType());
         }
 
         void Update()
@@ -43,49 +53,6 @@ namespace PathOfWuxia
             foreach(IHook hook in hooks)
             {
                 hook.OnUpdate();
-            }
-        }
-
-        private static void DisplayGenericMethodInfo(MethodBase mi)
-        {
-            Console.WriteLine("\r\n{0}", mi);
-
-            Console.WriteLine("\tIs this a generic method definition? {0}",
-                mi.IsGenericMethodDefinition);
-
-            Console.WriteLine("\tIs it a generic method? {0}",
-                mi.IsGenericMethod);
-
-            Console.WriteLine("\tDoes it have unassigned generic parameters? {0}",
-                mi.ContainsGenericParameters);
-
-            // If this is a generic method, display its type arguments.
-            //
-            if (mi.IsGenericMethod)
-            {
-                Type[] typeArguments = mi.GetGenericArguments();
-
-                Console.WriteLine("\tList type arguments ({0}):",
-                    typeArguments.Length);
-
-                foreach (Type tParam in typeArguments)
-                {
-                    // IsGenericParameter is true only for generic type
-                    // parameters.
-                    //
-                    if (tParam.IsGenericParameter)
-                    {
-                        Console.WriteLine("\t\t{0}  parameter position {1}" +
-                            "\n\t\t   declaring method: {2}",
-                            tParam,
-                            tParam.GenericParameterPosition,
-                            tParam.DeclaringMethod);
-                    }
-                    else
-                    {
-                        Console.WriteLine("\t\t{0}", tParam);
-                    }
-                }
             }
         }
     }
