@@ -18,9 +18,11 @@ namespace PathOfWuxia
     {
         void IHook.OnRegister(BaseUnityPlugin plugin)
         {
-            elementPos = plugin.Config.Bind<Vector3>("五行显示", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
-            elementTextPos = plugin.Config.Bind<Vector3>("五行显示", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
-            elementKey = plugin.Config.Bind<KeyCode>("五行显示", "五行显示热键", KeyCode.F3, "战斗时显示五行。调整位置后需开关一次生效");
+            elementPos = plugin.Config.Bind("五行显示", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
+            elementTextPos = plugin.Config.Bind("五行显示", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
+            elementKey = plugin.Config.Bind("五行显示", "五行显示热键", KeyCode.F3, "战斗时显示五行。调整位置后需开关一次生效");
+
+            thresholdDisplay = plugin.Config.Bind("游戏设定", "显示一次练满点数", true, "是否提示一次练满所需相应数值");
         }
 
         void IHook.OnUpdate()
@@ -39,6 +41,8 @@ namespace PathOfWuxia
         static ConfigEntry<Vector3> elementTextPos;
         static ConfigEntry<KeyCode> elementKey;
         static bool elementShow = true;
+
+        static ConfigEntry<bool> thresholdDisplay;
 
         // 1 吃药立即显示属性提升
         [HarmonyPostfix, HarmonyPatch(typeof(PropsUpgradableProperty), "AttachPropsEffect", new Type[] { typeof(CharacterInfoData) })]
@@ -203,6 +207,77 @@ namespace PathOfWuxia
             return false;
         }
 
-        // 7 todo: 显示需要多少点一次修炼到10
+        // 7 显示需要多少点一次修炼到10
+        internal static int GetThresholdStatus(int begin, int reqExp, Func<int,int> expFromStatus)
+        {
+            // 暂时用简单的+1s循环 (很慢)
+            int result = begin;
+            int exp;
+            do
+            {
+                result++;
+                exp = expFromStatus(result);
+            }
+            while (reqExp > exp);
+            return result;
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(CtrlNurturance), "OnOrderSelect", new Type[] { typeof(WGNurturanceBtn) })]
+        public static void NurturanceValueDisplay(CtrlNurturance __instance, WGNurturanceBtn btn)
+        {
+            if (!thresholdDisplay.Value)
+                return;
+            NurturanceOrderTree tree = btn.tree;
+            if (tree == null)
+                return;
+            var Instance = Traverse.Create(__instance);
+            NurturanceUIInfo uiInfo = Instance.Field("UIInfo").GetValue<NurturanceUIInfo>();
+            CharacterInfoData player = Instance.Field("Player").GetValue<CharacterInfoData>();
+            if (tree.Value.Fuction == NurturanceFunction.Skill)
+            {
+                if (!player.Skill.ContainsKey(tree.DoorPlate))
+                    return;
+                SkillData skillData = player.Skill[tree.DoorPlate];
+                int playerStatus = Instance.Method("GetPlayerStatus", skillData.Item.RequireAttribute).GetValue<int>();
+                float traitEffect = player.Trait.GetTraitEffect(TraitEffectType.SkillQuicken, (int)skillData.Item.Type);
+                float additionCoe = Instance.Method("GetAdditionCoe", tree.Value).GetValue<float>();
+                int exp = Instance.Method("CalculateAbilityExp", playerStatus, skillData.Item.RequireValue).GetValue<int>();
+                exp = Instance.Method("GetValueByEmotion", (int)(exp * (traitEffect + additionCoe))).GetValue<int>();
+                int req = 100 * (10 - skillData.Level) - skillData.Exp;
+                if (req > exp && req <= Instance.Method("GetValueByEmotion", (int)(900f * (traitEffect + additionCoe))).GetValue<int>())
+                {
+                    int thresholdStatus = GetThresholdStatus(playerStatus, req, status =>
+                    {
+                        int value = Instance.Method("CalculateAbilityExp", status, skillData.Item.RequireValue).GetValue<int>();
+                        value = Instance.Method("GetValueByEmotion", (int)(value * (traitEffect + additionCoe))).GetValue<int>();
+                        return value;
+                    });
+                    uiInfo.TipInfos.Insert(2, new TipInfo { type = WGTip.TipType.TitleValue, title = "一次练满需", value = thresholdStatus.ToString() });
+                    Instance.Field("view").GetValue<UINurturance>().ShowTip(uiInfo.TipInfos);
+                }
+            }
+            else if (tree.Value.Fuction == NurturanceFunction.Mantra)
+            {
+                MantraData mantraData = player.Mantra[tree.DoorPlate];
+                if (mantraData == null)
+                    return;
+                int playerStatus2 = Instance.Method("GetPlayerStatus", mantraData.Item.RequireAttribute).GetValue<int>();
+                float traitEffect2 = player.Trait.GetTraitEffect(TraitEffectType.MantraQuicken);
+                float additionCoe2 = Instance.Method("GetAdditionCoe", tree.Value).GetValue<float>();
+                int exp2 = Instance.Method("CalculateAbilityExp", playerStatus2, mantraData.Item.RequireValue).GetValue<int>();
+                exp2 = Instance.Method("GetValueByEmotion", (int)(exp2 * (traitEffect2 + additionCoe2))).GetValue<int>();
+                int req2 = 100 * (10 - mantraData.Level) - mantraData.Exp;
+                if (req2 > exp2 && req2 <= Instance.Method("GetValueByEmotion", (int)(900f * (traitEffect2 + additionCoe2))).GetValue<int>())
+                {
+                    int thresholdStatus = GetThresholdStatus(playerStatus2, req2, status =>
+                    {
+                        int value = Instance.Method("CalculateAbilityExp", status, mantraData.Item.RequireValue).GetValue<int>();
+                        value = Instance.Method("GetValueByEmotion", (int)(value * (traitEffect2 + additionCoe2))).GetValue<int>();
+                        return value;
+                    });
+                    uiInfo.TipInfos.Insert(2, new TipInfo { type = WGTip.TipType.TitleValue, title = "一次练满需", value = thresholdStatus.ToString() });
+                    Instance.Field("view").GetValue<UINurturance>().ShowTip(uiInfo.TipInfos);
+                }
+            }
+        }
     }
 }
