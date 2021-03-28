@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace PathOfWuxia
 {
-    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.01")]
+    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.1")]
     public class PluginBinarizer : BaseUnityPlugin
     {
         void RegisterHook(IHook hook)
