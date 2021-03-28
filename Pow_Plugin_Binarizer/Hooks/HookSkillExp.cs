@@ -12,7 +12,6 @@ using Heluo.Flow;
 using Heluo.Utility;
 using Heluo.Battle;
 using Heluo.FSM.Battle;
-using System.Reflection.Emit;
 
 namespace PathOfWuxia
 {
@@ -21,7 +20,7 @@ namespace PathOfWuxia
     {
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            skillExpInBattle = plugin.Config.Bind("扩展功能", "开关战斗招式经验", false, "开关战斗经验获取");
+            skillExpInBattle = plugin.Config.Bind("扩展功能", "战斗招式经验", false, "开关战斗经验获取系统");
             skillExpRate = plugin.Config.Bind("扩展功能", "战斗招式经验倍率", 0.04f, "获取招式经验的倍率");
             skillMaxLevel = plugin.Config.Bind("扩展功能", "招式等级上限", 10, "招式等级上限");
         }

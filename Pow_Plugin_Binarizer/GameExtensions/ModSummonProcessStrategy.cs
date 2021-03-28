@@ -39,11 +39,11 @@ namespace PathOfWuxia
                 unit.gameObject.SetActive(false);
                 this.summonUnits.Add(unit);
                 unit.OnTurnStart();
-                // todo: 半即时支持
-                //if (GameConfig.Mod.TimedBattle)
-                //{
-                //    this.manager.UnitGenerator.Timed_EncourageUnit(unit);
-                //}
+                // 半即时支持
+                if (HookInitiactiveBattle.bTimed)
+                {
+                    HookInitiactiveBattle.Timed_EncourageUnit(unit);
+                }
             }
             await 0.1f;
             if (GameConfig.IsSkipSkillEffect)
