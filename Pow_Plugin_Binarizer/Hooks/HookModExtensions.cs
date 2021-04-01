@@ -24,8 +24,8 @@ namespace PathOfWuxia
         {
             // 7 添加扩展GameAction
             Assembly assembly = Assembly.GetExecutingAssembly();
-            modActionTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(GameAction)) select t).ToList();
-            Console.WriteLine("Mod添加GameAction:");
+            modActionTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(OutputNode)) select t).ToList();
+            Console.WriteLine("Mod添加OutputNode:");
             foreach (var t in modActionTypes)
             {
                 Console.WriteLine(t.Name.ToString());
@@ -61,7 +61,7 @@ namespace PathOfWuxia
             __result = PropsEffectFormatter.Instance.Create(from);
             return false;
         }
-        public static CharacterMapping UICharacterMapping()
+        public static CharacterMapping GetUICharacterMapping()
         {
             try
             {
@@ -86,7 +86,7 @@ namespace PathOfWuxia
         {
             var mapping = Traverse.Create(__instance).Field("mapping");
             var sort = Traverse.Create(__instance).Field("sort").GetValue<List<PropsInfo>>();
-            mapping.SetValue(UICharacterMapping());
+            mapping.SetValue(GetUICharacterMapping());
             sort.Clear();
             foreach (KeyValuePair<string, InventoryData> keyValuePair in Game.GameData.Inventory)
             {
@@ -410,9 +410,11 @@ namespace PathOfWuxia
                     {
                         s = s.Trim(new char[]{'"'});
                     }
+                    Console.WriteLine("尝试解析扩展类型 = " + s);
                     Type action = modActionTypes.Find((Type item) => item.Name == s);
                     if (action != null)
                     {
+                        Console.WriteLine("解析扩展类型成功 = " + s);
                         __result = action;
                     }
                 }

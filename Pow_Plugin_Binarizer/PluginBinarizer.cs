@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using HarmonyLib;
 using BepInEx;
-using MessagePack;
-using Newtonsoft.Json;
 
 namespace PathOfWuxia
 {
@@ -20,15 +17,6 @@ namespace PathOfWuxia
 
         private List<IHook> hooks = new List<IHook>();
 
-        [MessagePackObject]
-        public class Test
-        {
-            [Key(0)]
-            public string ts;
-            [Key(1)]
-            public float f;
-        }
-
         void Awake()
         {
             Console.WriteLine("美好的初始化开始");
@@ -41,6 +29,7 @@ namespace PathOfWuxia
             RegisterHook(new HookModExtensions());
             RegisterHook(new HookUniqueItem());
             RegisterHook(new HookSkillExp());
+            RegisterHook(new HookTeamManage());
             RegisterHook(new HookInitiactiveBattle());
         }
 
