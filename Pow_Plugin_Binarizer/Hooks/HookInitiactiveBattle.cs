@@ -446,7 +446,6 @@ namespace PathOfWuxia
         public static Action WaitClick;
         private static WGBtn wait_button;
         private static WGBtn rest_button;
-        private static bool isOnRest = true;
 
         [HarmonyPrefix, HarmonyPatch(typeof(WGBattleUnitMenu), "Show")]
         public static bool TimedPatch_WaitBtn1(WGBattleUnitMenu __instance)
@@ -787,7 +786,7 @@ namespace PathOfWuxia
                 ai.Field("Current").SetValue(unit);
                 await 0.1f;
                 AIActionInfo aiactionInfo = ai.Method("Evaluate", moveInRange).GetValue<AIActionInfo>();//state.FearAI.Evaluate(moveInRange);
-                List<WuxiaCell> list = (aiactionInfo != null) ? aiactionInfo.path : null;
+                List<WuxiaCell> list = aiactionInfo?.path;
                 List<WuxiaCell> shortestPath = new List<WuxiaCell>();
                 int num = unit[BattleProperty.Move];
                 foreach (WuxiaCell wuxiaCell in moveInRange)
@@ -932,7 +931,7 @@ namespace PathOfWuxia
                             useinfo.attackCell = useinfo.moveEnd;
                         }
                         AIActionInfo aiactionInfo = useinfo;
-                        List<WuxiaCell> list = (aiactionInfo != null) ? aiactionInfo.path : null;
+                        List<WuxiaCell> list = aiactionInfo?.path;
                         List<WuxiaCell> shortestPath = new List<WuxiaCell>();
                         int num = unit[BattleProperty.Move];
                         foreach (WuxiaCell wuxiaCell2 in moveInRange)

@@ -111,28 +111,13 @@ namespace PathOfWuxia
         // AI部分暂时放弃 因为可以很多人公用一套info
 
         // 2. 用于战斗的技能不标主人，不参与增加属性
-        [HarmonyPrefix, HarmonyPatch(typeof(WuxiaUnit), "LearnedSkills", MethodType.Getter)]
-        public static bool SkillExpPatch_WuxiaUnit(ref WuxiaUnit __instance, ref CharacterSkillData __result)
+        [HarmonyPostfix, HarmonyPatch(typeof(WuxiaUnit), "LearnedSkills", MethodType.Getter)]
+        public static void SkillExpPatch_WuxiaUnit(ref WuxiaUnit __instance, ref CharacterSkillData __result)
         {
-            var _learnedskills = Traverse.Create(__instance).Field("_learnedskills").GetValue<CharacterSkillData>();
-            if (_learnedskills == null || _learnedskills.Count != __instance.info.Skill.Count)
+            foreach (var s in __result)
             {
-                _learnedskills = new CharacterSkillData();
-                foreach (SkillData skillData in __instance.info.Skill.Values)
-                {
-                    SkillData skillData2 = new SkillData
-                    {
-                        // CharacterId = this.info.Id, 这里删除
-                        Id = skillData.Id,
-                        MaxLevel = skillData.MaxLevel,
-                        Level = skillData.Level,
-                        Exp = skillData.Exp
-                    };
-                    _learnedskills.Add(skillData2.Id, skillData2);
-                }
+                s.Value.CharacterId = null;
             }
-            __result = _learnedskills;
-            return false;
         }
 
         // 3. Skill升级时加点跳过没主人的
