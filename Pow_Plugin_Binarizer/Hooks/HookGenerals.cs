@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 using BepInEx;
@@ -9,6 +11,7 @@ using Heluo.Flow;
 using Heluo.Battle;
 using Heluo.Components;
 using Heluo.Controller;
+using Heluo.Utility;
 
 namespace PathOfWuxia
 {
@@ -23,6 +26,8 @@ namespace PathOfWuxia
         }
         static ConfigEntry<float> speedValue;
         static ConfigEntry<KeyCode> speedKey;
+        static ConfigEntry<KeyCode> changeAnim;
+        static ConfigEntry<KeyCode> changeAnimBack;
         static ConfigEntry<GameLevel> difficulty;
         static ConfigEntry<ProbablyMode> probablyMode;
         static ConfigEntry<int> probablyValue;
@@ -44,6 +49,8 @@ namespace PathOfWuxia
             difficulty.SettingChanged += OnGameLevelChange;
             probablyMode = plugin.Config.Bind("游戏设定", "随机事件方式", ProbablyMode.None, "None-原版 SmallChance-小概率事件必发生 FixedRandomValue-设定产生的随机数");
             probablyValue = plugin.Config.Bind("游戏设定", "随机事件值", 50, "SmallChance：多少被界定为小概率 FixedRandomValue：1~100对应必发生/必不发生");
+            changeAnim = plugin.Config.Bind("游戏设定", "切换姿势(特殊)", KeyCode.F6, "切换特化战斗姿势(随机选择)");
+            changeAnimBack = plugin.Config.Bind("游戏设定", "切换姿势(还原)", KeyCode.F7, "切换回默认战斗姿势");
 
             cameraFocusMode = plugin.Config.Bind("相机设置", "战斗相机跟随方式", CameraFocusMode.Attacker, "战斗时相机如何跟随，游戏默认跟随攻击者");
             cameraFree = plugin.Config.Bind("相机设置", "场景自由视角", false, "是否开启自由视角");
@@ -54,6 +61,35 @@ namespace PathOfWuxia
             if (Input.GetKeyDown(speedKey.Value))
             {
                 Time.timeScale = Time.timeScale == 1.0f ? Math.Max(0.1f, speedValue.Value) : 1.0f;
+            }
+
+            if (Input.GetKeyDown(changeAnim.Value))
+            {
+                if (IdleAnimOverrides == null)
+                {
+                    BuildIdleAnimOverrides();
+                }
+                WuxiaUnit unit = Traverse.Create(Game.BattleStateMachine).Field("_currentUnit").GetValue<WuxiaUnit>();
+                if (unit != null && IdleAnimOverrides != null && IdleAnimOverrides.Count > 0)
+                {
+                    string randomIdleAnim = IdleAnimOverrides.Random();
+                    AnimationClip animationClip = Game.Resource.Load<AnimationClip>(GameConfig.AnimationPath + randomIdleAnim + ".anim");
+                    if (animationClip != null)
+                    {
+                        var list = new[] { ("idle", animationClip) };
+                        unit.Actor.Override(list);
+                    }
+                }
+            }
+            if (Input.GetKeyDown(changeAnimBack.Value))
+            {
+                WuxiaUnit unit = Traverse.Create(Game.BattleStateMachine).Field("_currentUnit").GetValue<WuxiaUnit>();
+                if (unit != null)
+                {
+                    var weapon = unit.info.Equip.GetEquip(EquipType.Weapon);
+                    var weaponType = weapon?.PropsCategory.ToString();
+                    unit.Actor.OverrideDefault(Traverse.Create(unit).Field("exterior").GetValue<CharacterExteriorData>(), weaponType);
+                }
             }
 
             // sync difficulty
@@ -67,6 +103,13 @@ namespace PathOfWuxia
             {
                 Game.GameData.GameLevel = difficulty.Value;
             }
+        }
+
+        static List<string> IdleAnimOverrides;
+        static void BuildIdleAnimOverrides()
+        {
+            var idles = from animMap in Game.Data.Get<AnimationMapping>().Values where !animMap.Idle.IsNullOrWhiteSpace() select animMap.Idle;
+            IdleAnimOverrides = idles.Distinct().ToList();
         }
 
         // 1 Sync await by timeScale for speed correct
