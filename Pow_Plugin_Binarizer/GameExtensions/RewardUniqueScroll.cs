@@ -29,7 +29,7 @@ namespace PathOfWuxia
                     Props props;
                     if (!this.isMantra)
                     {
-                        Skill skill = Randomizer.GetOneFromData<Skill>(this.sourceId);
+                        Skill skill = Game.Data.Get<Skill>(sourceId) ?? Randomizer.GetOneFromData<Skill>(sourceId);
                         props = new Props
                         {
                             Id = "$scroll_" + skill.Id,
@@ -46,7 +46,7 @@ namespace PathOfWuxia
                     }
                     else
                     {
-                        Mantra mantra = Randomizer.GetOneFromData<Mantra>(this.sourceId);
+                        Mantra mantra = Game.Data.Get<Mantra>(sourceId) ?? Randomizer.GetOneFromData<Mantra>(sourceId);
                         props = new Props
                         {
                             Id = "$scroll_" + mantra.Id,
@@ -61,7 +61,7 @@ namespace PathOfWuxia
                             PropsEffectDescription = "学会独特心法：" + mantra.Name
                         };
                     }
-                    HookUniqueItem.exData.AddUniqueItem<Props>(props);
+                    ModExtensionSaveData.AddUniqueItem<Props>(props);
                     Game.GameData.Inventory.Add(props.Id, 1, true);
                     if (base.Graph != null && (bool)base.Graph.GetVariable("IsShowMessage"))
                     {

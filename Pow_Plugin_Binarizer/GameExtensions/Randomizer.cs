@@ -44,10 +44,17 @@ namespace PathOfWuxia
                 return null;
             if ( Parse(pattern) )
             {
+                Console.WriteLine("匹配字符："+pattern);
+                var ids = from i in randomCache select i.Id;
+                Console.WriteLine("匹配列表：[ " + string.Join(", ", ids) + "]");
                 if (randomCache.Count > 0)
-                    return randomCache.Random();
+                {
+                    T item = randomCache.Random();
+                    Console.WriteLine("随机选择：" + item.Id);
+                    return item;
+                }
             }
-            return Game.Data.Get<T>(pattern);
+            return null;
         }
 
         public ICollection<T> GetAll(string pattern)
@@ -56,11 +63,6 @@ namespace PathOfWuxia
                 return null;
             if (Parse(pattern))
                 return randomCache;
-            T item = Game.Data.Get<T>(pattern);
-            if (item != null)
-            {
-                return new T[] { item };
-            }
             return new T[] { };
         }
 

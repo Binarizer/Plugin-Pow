@@ -30,25 +30,22 @@ namespace PathOfWuxia
 
         public void OnUpdate()
         {
-            if (bTimed)
+            if (bTimed && FSM != null)
             {
-                if (FSM && FSM.UI.enabled)
+                for (int num = 0; num < UIPortraits.Count; num++)
                 {
-                    for (int num = 0; num < UIPortraits.Count; num++)
+                    if (UIUnitIndex.ContainsValue(num))
                     {
-                        if (UIUnitIndex.ContainsValue(num))
+                        Image image = UIPortraits[num];
+                        Text text = UINames[num];
+                        int order = UIPortraitOrder[num];
+                        WuxiaUnit unit = UIWuxiaUnits[order];
+                        Vector3 targetPos = (order == 0) ? new Vector3(68f, 620f, 0f) : new Vector3(80f, 610f - (float)order * 48f, 0f);
+                        if (unit != null && unit.IsEndUnit)
                         {
-                            Image image = UIPortraits[num];
-                            Text text = UINames[num];
-                            int order = UIPortraitOrder[num];
-                            WuxiaUnit unit = UIWuxiaUnits[order];
-                            Vector3 targetPos = (order == 0) ? new Vector3(68f, 620f, 0f) : new Vector3(80f, 610f - (float)order * 48f, 0f);
-                            if (unit != null && unit.IsEndUnit)
-                            {
-                                targetPos += new Vector3(-20f, -20f, 0f);
-                            }
-                            image.transform.position = Vector3.Lerp(image.transform.position, targetPos, Time.deltaTime * 5f);
+                            targetPos += new Vector3(-20f, -20f, 0f);
                         }
+                        image.transform.position = Vector3.Lerp(image.transform.position, targetPos, Time.deltaTime * 5f);
                     }
                 }
 
@@ -208,6 +205,10 @@ namespace PathOfWuxia
             bTimed = initiactiveBattle.Value;   // 总开关
             BM = __instance;
             FSM = bsm;
+            TimedValue.Clear();
+            TimedActives.Clear();
+            TimedWaiting.Clear();
+            TimedNext.Clear();
             UIWuxiaUnits.Clear();
             UIUnitIndex.Clear();
             UIPortraits.Clear();

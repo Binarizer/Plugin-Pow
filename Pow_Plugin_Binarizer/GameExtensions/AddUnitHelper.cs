@@ -36,13 +36,6 @@ namespace PathOfWuxia
             }
             return list;
         }
-        public static void ProcessUnitId(WuxiaBattleManager m, ref string id)
-        {
-            Console.WriteLine("id="+id);
-            Npc npc = Randomizer.GetOneFromData<Npc>(id);
-            if ( npc != null )
-                id = npc.Id;
-        }
 
         public static void ProcessCellNumber(WuxiaBattleManager m, ref int num)
         {

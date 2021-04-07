@@ -9,7 +9,7 @@ namespace Heluo.Flow.Battle
         protected override int GetProperty()
         {
             INodeGraph graph = base.Graph;
-            BufferInfo bufferInfo = (graph != null) ? graph.GetVariable<BufferInfo>("BufferInfo") : null;
+            BufferInfo bufferInfo = graph?.GetVariable<BufferInfo>("BufferInfo");
             if (bufferInfo != null)
             {
                 if (Game.GameData.Character.ContainsKey(bufferInfo.Unit.CharacterInfoId))
@@ -37,7 +37,7 @@ namespace Heluo.Flow.Battle
         protected override int GetProperty()
         {
             INodeGraph graph = base.Graph;
-            BufferInfo bufferInfo = (graph != null) ? graph.GetVariable<BufferInfo>("BufferInfo") : null;
+            BufferInfo bufferInfo = graph?.GetVariable<BufferInfo>("BufferInfo");
             if (bufferInfo != null)
             {
                 if (Game.GameData.Character.ContainsKey(bufferInfo.Unit.CharacterInfoId))
@@ -95,7 +95,7 @@ namespace Heluo.Flow.Battle
         {
             int result = 0;
             INodeGraph graph = base.Graph;
-            BufferInfo bufferInfo = (graph != null) ? graph.GetVariable<BufferInfo>("BufferInfo") : null;
+            BufferInfo bufferInfo = graph?.GetVariable<BufferInfo>("BufferInfo");
             if (bufferInfo != null)
             {
                 Data.Faction faction = bufferInfo.Unit.faction;

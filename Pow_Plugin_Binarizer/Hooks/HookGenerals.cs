@@ -105,11 +105,15 @@ namespace PathOfWuxia
             }
         }
 
-        static List<string> IdleAnimOverrides;
+        private static List<string> IdleAnimOverrides;
         static void BuildIdleAnimOverrides()
         {
-            var idles = from animMap in Game.Data.Get<AnimationMapping>().Values where !animMap.Idle.IsNullOrWhiteSpace() select animMap.Idle;
+            var idles = from animMap in Game.Data.Get<AnimationMapping>(am => !am.Idle.IsNullOrEmpty()) select animMap.Idle;
             IdleAnimOverrides = idles.Distinct().ToList();
+            var stands = from animMap in Game.Data.Get<AnimationMapping>(am => !am.Stand.IsNullOrEmpty()) select animMap.Stand;
+            IdleAnimOverrides.AddRange(stands.Distinct());
+
+            Console.WriteLine("特殊动作表：" + string.Join(",", idles));
         }
 
         // 1 Sync await by timeScale for speed correct

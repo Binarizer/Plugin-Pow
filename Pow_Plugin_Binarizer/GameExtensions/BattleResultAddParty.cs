@@ -13,17 +13,13 @@ namespace PathOfWuxia
     {
         public override Status GetValue()
         {
-            Console.WriteLine("这特么鬼？");
             if (base.WuxiaBattleManager == null)
             {
                 return Status.Error;
             }
-            string[] array2 = this.CellNumber.Split(new char[]
-            {
-                ','
-            });
+            string[] array2 = CellNumber.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-            int max = ((count > 0) ? count : Game.GameData.Party.Count);
+            int max = (count > 0) ? Math.Min(count, Game.GameData.Party.Count) : Game.GameData.Party.Count;
             for (int i = 0; i < max; i++)
             {
                 string text = Game.GameData.Party.GetPartyByIndex(i);
@@ -34,7 +30,7 @@ namespace PathOfWuxia
                 }
                 else
                 {
-                    tileNumber = -3;    // 距离2格随机
+                    tileNumber = (i == 0) ? -1 : -3;    // 距离2格随机
                 }
                 WuxiaUnit wuxiaUnit = base.WuxiaBattleManager.AddUnit(text, Faction.Player, tileNumber, !fullHealth);
                 base.WuxiaBattleManager.FacedToNearestEnemy(wuxiaUnit);
@@ -48,16 +44,16 @@ namespace PathOfWuxia
             {
                 "加入全隊 : ",
                 " 至 : ",
-                this.CellNumber,
+                CellNumber,
                 " 格子"
             });
         }
 
-        [InputField("格子編號(逗號分開，數量必須對應部隊ID)", false, null)]
-        public string CellNumber;
-
         [InputField("数量，小于1则为全部", false, null)]
         public int count = 0;
+
+        [InputField("格子編號(逗號分開，數量必須對應部隊ID)", false, null)]
+        public string CellNumber = string.Empty;
 
         [InputField("是否满血", false, null)]
         public bool fullHealth = false;

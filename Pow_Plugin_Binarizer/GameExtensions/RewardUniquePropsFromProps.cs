@@ -33,7 +33,11 @@ namespace PathOfWuxia
                 });
                 for (int i = 0; i < this.count; i++)
                 {
-                    Props props = Randomizer.GetOneFromData<Props>(this.sourceId);
+                    Props props = Game.Data.Get<Props>(sourceId) ?? Randomizer.GetOneFromData<Props>(sourceId);
+                    if (props == null)
+                    {
+                        return false;
+                    }
                     Props props2 = props.Clone<Props>();
                     props2.Id = "$fp_" + props.Id;
                     props2.Name = string.Format("<color=#FFEEDD>{0}+</color>", props.Name);
@@ -51,7 +55,11 @@ namespace PathOfWuxia
                     }
                     foreach (string id in array)
                     {
-                        Props props3 = Randomizer.GetOneFromData<Props>(id);
+                        Props props3 = Game.Data.Get<Props>(id) ?? Randomizer.GetOneFromData<Props>(id);
+                        if (props3 == null)
+                        {
+                            continue;
+                        }
                         if (props3.PropsEffect != null)
                         {
                             props2.PropsEffect.AddRange(props3.PropsEffect);
@@ -66,7 +74,7 @@ namespace PathOfWuxia
                             props4.PropsEffectDescription += string.Format("\n附加：{0}", props3.PropsEffectDescription);
                         }
                     }
-                    HookUniqueItem.exData.AddUniqueItem(props2);
+                    ModExtensionSaveData.AddUniqueItem(props2);
                     Game.GameData.Inventory.Add(props2.Id, 1, true);
                     if (base.Graph != null && (bool)base.Graph.GetVariable("IsShowMessage"))
                     {

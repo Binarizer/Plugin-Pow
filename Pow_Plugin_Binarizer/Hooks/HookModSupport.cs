@@ -11,7 +11,10 @@ using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
+using Heluo.FSM;
+using Heluo.FSM.Main;
 using Heluo.Data;
+using Heluo.Flow;
 using Heluo.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
@@ -78,11 +81,11 @@ namespace PathOfWuxia
             var dict = Traverse.Create(__instance).Field("dict");
             var resource = Traverse.Create(__instance).Field("resource").GetValue<IResourceProvider>();
             path = __instance.CheckPath(path);
-            dict.SetValue( new Dictionary<Type, IDictionary>() );
+            dict.SetValue(new Dictionary<Type, IDictionary>());
             Type type = typeof(Item);
             foreach (Type itemType in from t in type.Assembly.GetTypes()
-                                   where t.IsSubclassOf(type) && !t.HasAttribute<Hidden>(false)
-                                   select t)
+                                      where t.IsSubclassOf(type) && !t.HasAttribute<Hidden>(false)
+                                      select t)
             {
                 Type typeItemDic = typeof(CsvDataSource<>).MakeGenericType(new Type[]
                 {
@@ -99,7 +102,7 @@ namespace PathOfWuxia
                     if (fileData != null)
                     {
                         // 主数据 *.txt
-                        itemDic = (Activator.CreateInstance(typeItemDic, new object[]{ fileData }) as IDictionary);
+                        itemDic = (Activator.CreateInstance(typeItemDic, new object[] { fileData }) as IDictionary);
 
                         // 补充数据 *_modify.txt
                         byte[] fileDataModify = resource.LoadBytes(path + itemType.Name + "_modify.txt");
@@ -279,6 +282,70 @@ namespace PathOfWuxia
             {
                 PlayCvByPath(string.Format(modTalkVoicePath.Value, talk.Id));
             }
+        }
+
+        // 5 进战斗无需填写场景名；可随机场景
+        private static string CachedBattleId = "";
+        [HarmonyPrefix, HarmonyPatch(typeof(BattleAction), "GetValue")]
+        public static bool ModPatch_BattleAction(BattleAction __instance, ref bool __result)
+        {
+            if (!Application.isPlaying || __instance.battleId.IsNullOrEmpty())
+            {
+                __result = false;
+                return false;
+            }
+            string battleId = __instance.battleId;
+            BattleArea battleArea = Game.Data.Get<BattleArea>(battleId);
+            BattleGrid battleGrid = Game.Data.Get<BattleGrid>(battleArea?.BattleMap);
+            if (battleGrid == null)
+            {
+                battleGrid = Randomizer.GetOneFromData<BattleGrid>(battleArea?.BattleMap);
+                if (battleGrid != null)
+                {
+                    BattleArea battleAreaClone = battleArea.Clone<BattleArea>();
+                    battleAreaClone.Id = "!" + battleAreaClone.Id;
+                    battleAreaClone.BattleMap = battleGrid.Id;  // 复写mapId
+                    ModExtensionSaveData.AddTempItem(battleAreaClone);
+                    battleId = battleAreaClone.Id;
+                }
+            }
+            string mapId = battleGrid?.MapId;
+            Console.WriteLine("当前MapId="+ Game.GameData.MapId);
+            Console.WriteLine("需要MapId="+ mapId);
+            if (mapId == Game.GameData.MapId)
+            {
+                Game.FSM.SendEvent("BATTLE", new Heluo.FSM.Main.BattleEventArgs() { BattleId = battleId });
+                __result = true;
+            }
+            else
+            {
+                CachedBattleId = battleId;
+                Console.WriteLine("设置BattleId=" + CachedBattleId);
+                Game.FSM.SendEvent("LOADING", new LoadingEventArgs
+                {
+                    MapId = mapId,
+                    CinematicId = null,
+                    TimeStage = Heluo.Manager.TimeStage.None,
+                    LoadType = LoadType.Default
+                });
+                __result = true;
+            }
+            return false;
+        }
+        [HarmonyPrefix, HarmonyPatch(typeof(GameState<MainStateMachine>), "SendEvent", new Type[] { typeof(string), typeof(EventArgs) })]
+        public static bool ModPatch_LoadBattlePost(GameState<MainStateMachine> __instance, ref string eventName, ref EventArgs e)
+        {
+            Console.WriteLine("当前BattleId=" + CachedBattleId);
+            Console.WriteLine("eventName=" + eventName);
+            Console.WriteLine("e=" + e);
+            Console.WriteLine("当前MapId=" + Game.GameData.MapId);
+            if (!CachedBattleId.IsNullOrEmpty() && eventName == "CINEMATIC" && e==null)
+            {
+                eventName = "BATTLE";
+                e = new Heluo.FSM.Main.BattleEventArgs() { BattleId = CachedBattleId };
+                CachedBattleId = "";
+            }
+            return true;
         }
     }
 }

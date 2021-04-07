@@ -30,8 +30,6 @@ namespace PathOfWuxia
         {
         }
 
-        public static ModExtensionSaveData exData = new ModExtensionSaveData();
-
         // 1 更换 DataManager 为 ModDataManager
         [HarmonyPostfix, HarmonyPatch(typeof(GlobalBindingModule), "OnCreateGameData", new Type[] { typeof(IContext) })]
         public static void ModPatch_RebindData(GlobalBindingModule __instance)
@@ -47,7 +45,7 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(GameDataHepler), "SaveFile", new Type[] { typeof(GameData) })]
         public static void SavePatch_SaveUnique(GameData data, ref byte[] __result)
         {
-            if (exData != null)
+            if (ModExtensionSaveData.Instance != null)
             {
                 // debug
                 //Console.WriteLine("尝试存储: ");
@@ -55,7 +53,7 @@ namespace PathOfWuxia
                 //Console.WriteLine(s);
 
                 MemoryStream memoryStream = new MemoryStream();
-                LZ4MessagePackSerializer.Serialize(memoryStream, exData, HeluoResolver.Instance);
+                LZ4MessagePackSerializer.Serialize(memoryStream, ModExtensionSaveData.Instance, HeluoResolver.Instance);
                 __result = __result.AddRangeToArray(memoryStream.ToArray());
             }
         }
@@ -67,7 +65,7 @@ namespace PathOfWuxia
             {
                 //Console.WriteLine("尝试读取: ");
                 sr.BaseStream.Position = pos;
-                exData = LZ4MessagePackSerializer.Deserialize<ModExtensionSaveData>(sr.BaseStream, HeluoResolver.Instance, true);
+                ModExtensionSaveData.Instance = LZ4MessagePackSerializer.Deserialize<ModExtensionSaveData>(sr.BaseStream, HeluoResolver.Instance, true);
             }
         }
     }

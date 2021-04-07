@@ -33,7 +33,7 @@ namespace PathOfWuxia
 
         public T Get<T>(string id) where T : Item
         {
-            return data.Get<T>(id) ?? HookUniqueItem.exData.GetUniqueItem<T>(id);    // 独特物品
+            return data.Get<T>(id) ?? ModExtensionSaveData.GetItem<T>(id);
         }
 
         public List<T> Get<T>(params string[] id) where T : Item

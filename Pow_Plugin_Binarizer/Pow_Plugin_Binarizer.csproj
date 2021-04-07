@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>M:\Steam\steamapps\common\PathOfWuxia\BepInEx\plugins\</OutputPath>
+    <OutputPath>G:\Steam\steamapps\common\PathOfWuxia\BepInEx\plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -26,7 +26,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>M:\Steam\steamapps\common\PathOfWuxia\BepInEx\plugins\</OutputPath>
+    <OutputPath>G:\Steam\steamapps\common\PathOfWuxia\BepInEx\plugins\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -328,6 +328,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GameExtensions\BattleResultAddRands.cs" />
     <Compile Include="GameExtensions\PropsEffectFormatter.cs" />
     <Compile Include="GameExtensions\ModDataManager.cs" />
     <Compile Include="GameExtensions\ModExtensionSaveData.cs" />
