@@ -8,11 +8,8 @@ using Heluo;
 using Heluo.UI;
 using Heluo.Data;
 using Heluo.Utility;
-using Heluo.Flow;
-using Heluo.Battle;
-using Heluo.Components;
-using Heluo.Controller;
 using UnityEngine.UI;
+using Heluo.Flow;
 
 namespace PathOfWuxia
 {
@@ -24,16 +21,41 @@ namespace PathOfWuxia
         static ConfigEntry<KeyCode> teamMemberAdd;
         static ConfigEntry<KeyCode> teamMemberRemove;
         static ConfigEntry<KeyCode> teamMemberRemoveAll;
+        static ConfigEntry<KeyCode> communityRemove;
 
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            teamManageOn = plugin.Config.Bind("自由组队", "开启自由组队模式", false, "开启自由组队模式（可用来调整队伍以便通过剧情）");
+            teamManageOn = plugin.Config.Bind("自由组队", "·开启自由组队模式", false, "开启自由组队模式，用来调整队伍、通过剧情等，剑击江湖mod请打开（需重开设置菜单）");
+            if (teamManageOn.Value)
+            {
+                BindConfig(plugin);
+            }
+
+            teamManageOn.SettingChanged += (o, e) =>
+            {
+                if (teamManageOn.Value)
+                {
+                    BindConfig(plugin);
+                }
+                else
+                {
+                    plugin.Config.Remove(teamMemberMax.Definition);
+                    plugin.Config.Remove(teamMemberAdd.Definition);
+                    plugin.Config.Remove(teamMemberRemove.Definition);
+                    plugin.Config.Remove(teamMemberRemoveAll.Definition);
+                    plugin.Config.Remove(communityRemove.Definition);
+                }
+                UpdateTeamDisplay();
+            };
+        }
+
+        static void BindConfig(BaseUnityPlugin plugin)
+        {
             teamMemberMax = plugin.Config.Bind("自由组队", "最大队伍人数", 4, "最大队伍人数");
             teamMemberAdd = plugin.Config.Bind("自由组队", "队伍加入当前角色", KeyCode.F3, "加入队伍");
             teamMemberRemove = plugin.Config.Bind("自由组队", "队伍移除当前角色", KeyCode.F4, "移出队伍");
             teamMemberRemoveAll = plugin.Config.Bind("自由组队", "队伍移除全部队友", KeyCode.F5, "清空队伍");
-
-            teamManageOn.SettingChanged += (o, e) => { UpdateTeamDisplay(); };
+            communityRemove = plugin.Config.Bind("自由组队", "队伍从社群移除", KeyCode.F6, "删除社群，之后可于行囊->任务->人物加入道具重新加回");
         }
 
         static GameObject TeamMemberObject;         // 队伍图标挂接点
@@ -48,7 +70,7 @@ namespace PathOfWuxia
                     return;
                 if (Input.GetKeyDown(teamMemberAdd.Value))
                 {
-                    CharacterMapping cm = HookModExtensions.GetUICharacterMapping();
+                    CharacterMapping cm = GlobalLib.GetUICharacterMapping();
                     if (cm != null && cm.Id != GameConfig.Player && !Game.GameData.Party.Contains(cm.Id))
                     {
                         Game.GameData.Party.AddParty(cm.Id, false);
@@ -58,7 +80,7 @@ namespace PathOfWuxia
                 }
                 if (Input.GetKeyDown(teamMemberRemove.Value))
                 {
-                    CharacterMapping cm = HookModExtensions.GetUICharacterMapping();
+                    CharacterMapping cm = GlobalLib.GetUICharacterMapping();
                     if (cm != null && cm.Id != GameConfig.Player && Game.GameData.Party.Contains(cm.Id))
                     {
                         Game.GameData.Party.RemoveParty(cm.Id);
@@ -77,6 +99,30 @@ namespace PathOfWuxia
                     }
                     int count = Traverse.Create(UIHome).Property("controller").Field("characterMapping").Property("Count").GetValue<int>();
                     UIHome.UpdateCommunity(count);
+                }
+                if (Input.GetKeyDown(communityRemove.Value))
+                {
+                    CharacterMapping cm = GlobalLib.GetUICharacterMapping();
+                    if (cm != null && cm.Id != GameConfig.Player)
+                    {
+                        Game.GameData.Community[cm.Id].isOpen = false;
+                        Game.GameData.NurturanceOrder.CloseCommunityOrder(cm.Id);
+                        if (Game.GameData.Party.Contains(cm.Id))
+                            Game.GameData.Party.RemoveParty(cm.Id);
+                        Traverse.Create(UIHome).Property("controller").Method("OnShow").GetValue();
+                        Traverse.Create(UIHome).Property("controller").Method("HideCommunity").GetValue();
+                        Traverse.Create(UIHome).Property("controller").Method("UpdateCommunity").GetValue();
+                        string joinPropsId = "p_npcj_" + cm.Id;
+                        if (!Game.GameData.Inventory.ContainsKey(joinPropsId))
+                        {
+                            new RewardProps
+                            {
+                                method = Method.Add,
+                                propsId = "p_npcj_" + cm.Id,
+                                value = 1
+                            }.GetValue();
+                        }
+                    }
                 }
             }
         }

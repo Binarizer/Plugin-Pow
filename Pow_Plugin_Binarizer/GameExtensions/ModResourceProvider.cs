@@ -11,10 +11,8 @@ using Heluo.Resource;
 
 namespace PathOfWuxia
 {
-    // Token: 0x020009BE RID: 2494
     public class ModResourceProvider : ObjectResourceProvider
     {
-        // Token: 0x060038D7 RID: 14551 RVA: 0x00110FB4 File Offset: 0x0010F1B4
         public ModResourceProvider(ICoroutineRunner runner, string modPath) : base(runner)
         {
             this.ExternalDirectory = modPath;
@@ -26,10 +24,22 @@ namespace PathOfWuxia
             }
         }
 
-        // Token: 0x060038D8 RID: 14552
         public override T Load<T>(string path)
         {
             Type typeFromHandle = typeof(T);
+            if (typeFromHandle == typeof(GameObject))
+            {
+                // 读取绝对路径资源，官方资源带路径组合需要被忽略
+                int start = path.IndexOf("@[");
+                if (start != -1)
+                {
+                    int end = path.IndexOf("]");
+                    string actualPath = path.Substring(start + 2, end - start - 2);
+                    Console.WriteLine("检测到Mod绝对路径AssetBundle资源=" + actualPath);
+                    var assetBundleProvider = Successor as AssetBundleResourceProvider;
+                    return assetBundleProvider.Load<T>(actualPath);
+                }
+            }
             if (typeFromHandle != typeof(AudioClip) && typeFromHandle != typeof(Texture2D) && typeFromHandle != typeof(Sprite))
                 return default(T);
             if (string.IsNullOrEmpty(this.ExternalDirectory))
@@ -78,7 +88,6 @@ namespace PathOfWuxia
             return default(T);
         }
 
-        // Token: 0x060038D9 RID: 14553
         public override byte[] LoadBytes(string path)
         {
             if (string.IsNullOrEmpty(this.ExternalDirectory))
@@ -88,7 +97,6 @@ namespace PathOfWuxia
             return this.GetDataFromPath(path) ?? this.GetDataFromZip(path);
         }
 
-        // Token: 0x060038DA RID: 14554 RVA: 0x0011120C File Offset: 0x0010F40C
         private byte[] GetDataFromPath(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -105,7 +113,6 @@ namespace PathOfWuxia
             return File.ReadAllBytes(path2);
         }
 
-        // Token: 0x060038DB RID: 14555 RVA: 0x00111240 File Offset: 0x0010F440
         private byte[] GetDataFromZip(string path)
         {
             path = path.ToLower();
@@ -129,13 +136,8 @@ namespace PathOfWuxia
             return array;
         }
 
-        // Token: 0x0400305A RID: 12378
         private string ExternalDirectory = string.Empty;
-
-        // Token: 0x0400305C RID: 12380
         private ZipFile zip;
-
-        // Token: 0x0400305D RID: 12381
         private Dictionary<string, ZipEntry> allEntry;
     }
 }

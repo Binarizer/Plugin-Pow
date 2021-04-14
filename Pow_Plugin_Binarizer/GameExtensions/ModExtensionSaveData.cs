@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Heluo.Data;
 using UnityEngine;
 using MessagePack;
+using Heluo.Utility;
 
 namespace PathOfWuxia
 {
@@ -23,73 +24,96 @@ namespace PathOfWuxia
         // 通用数据接口，给DataManager用
         public static T GetItem<T>(string Id) where T : Item
         {
+            if (Id.IsNullOrEmpty()) return null;
             return GetTempItem<T>(Id) ?? GetUniqueItem<T>(Id);
         }
 
-        public static T GetUniqueItem<T>(string Id) where T : Item
+        public static T GetUniqueItem<T>(string id) where T : Item
         {
             Dictionary<string, T> dic = Instance.GetUniqueDictionary<T>();
-            if (dic.ContainsKey(Id))
+            if (dic.ContainsKey(id))
             {
-                return dic[Id];
+                return dic[id];
             }
             return default(T);
         }
-
         public static void AddUniqueItem<T>(T item) where T : Item
         {
             Dictionary<string, T> dic = Instance.GetUniqueDictionary<T>();
             do
             {
-                item.Id = Instance.GetNextUniqueId(item.Id);
+                item.Id = GetNextUniqueId(item.Id);
             }
             while (dic.ContainsKey(item.Id));
-            Debug.Log("Try Add Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
+            Debug.Log("Try Add Unique Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
             dic.Add(item.Id, item);
         }
+        public static void RemoveUniqueItem<T>(string id) where T : Item
+        {
+            Dictionary<string, T> dic = Instance.GetUniqueDictionary<T>();
+            Debug.Log("Try Remove Unique Item: " + id);
+            dic.Remove(id);
+        }
 
-        public static T GetTempItem<T>(string Id) where T : Item
+        public static T GetTempItem<T>(string id) where T : Item
         {
             Dictionary<string, T> dic = Instance.GetTempDictionary<T>();
-            if (dic.ContainsKey(Id))
+            if (dic.ContainsKey(id))
             {
-                return dic[Id];
+                return dic[id];
             }
             return default(T);
         }
-
         public static void AddTempItem<T>(T item) where T : Item
         {
             Dictionary<string, T> dic = Instance.GetTempDictionary<T>();
             do
             {
-                item.Id = Instance.GetNextTempId(item.Id);
+                item.Id = GetNextTempId(item.Id);
             }
             while (dic.ContainsKey(item.Id));
             Debug.Log("Try Add Temp Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
             dic.Add(item.Id, item);
         }
-
-        private string GetNextUniqueId(string s)
+        public static void RemoveTempItem<T>(string id) where T : Item
         {
-            int u = s.LastIndexOf('#');
-            if (u == -1)
-            {
-                return s + "#000";
-            }
-            int id = int.Parse(s.Substring(u + 1));
-            return s.Substring(0, s.Length - 3) + (id + 1).ToString("D3");
+            Dictionary<string, T> dic = Instance.GetTempDictionary<T>();
+            Debug.Log("Try Remove Temp Item: " + id);
+            dic.Remove(id);
         }
 
-        private string GetNextTempId(string s)
+        // uniqueId: $[sourceId]#[000~999]
+        public static string GetUniqueSourceId(string id)
         {
-            int u = s.LastIndexOf('~');
-            if (u == -1)
-            {
-                return s + "~000";
-            }
-            int id = int.Parse(s.Substring(u + 1));
-            return s.Substring(0, s.Length - 3) + (id + 1).ToString("D3");
+            if (id[0] != '$')
+                return id;
+            int end = id.LastIndexOf('#');
+            return id.Substring(1, id.LastIndexOf('#') - 1);
+        }
+        public static string GetNextUniqueId(string id)
+        {
+            if (id[0] != '$')
+                return "$" + id + "#000";
+            int end = id.LastIndexOf('#');
+            int uniqueId = int.Parse(id.Substring(end + 1));
+            return id.Substring(0, id.Length - 3) + (uniqueId + 1).ToString("D3");
+        }
+
+        // tempId: ![sourceId]~[000~999]
+        public static string GetTempSourceId(string id)
+        {
+            if (id[0] != '!')
+                return id;
+            int end = id.LastIndexOf('~');
+            return id.Substring(1, id.LastIndexOf('~') - 1);
+        }
+        private static string GetNextTempId(string id)
+        {
+            if (id[0] != '!')
+                return "!" + id + "~000";
+            int end = id.LastIndexOf('~');
+            int tempId = int.Parse(id.Substring(end + 1));
+            return id.Substring(0, id.Length - 3) + (tempId + 1).ToString("D3");
         }
 
         private Dictionary<string, T> GetUniqueDictionary<T>() where T : Item

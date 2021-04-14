@@ -49,8 +49,8 @@ namespace PathOfWuxia
             difficulty.SettingChanged += OnGameLevelChange;
             probablyMode = plugin.Config.Bind("游戏设定", "随机事件方式", ProbablyMode.None, "None-原版 SmallChance-小概率事件必发生 FixedRandomValue-设定产生的随机数");
             probablyValue = plugin.Config.Bind("游戏设定", "随机事件值", 50, "SmallChance：多少被界定为小概率 FixedRandomValue：1~100对应必发生/必不发生");
-            changeAnim = plugin.Config.Bind("游戏设定", "切换姿势(特殊)", KeyCode.F6, "切换特化战斗姿势(随机选择)");
-            changeAnimBack = plugin.Config.Bind("游戏设定", "切换姿势(还原)", KeyCode.F7, "切换回默认战斗姿势");
+            changeAnim = plugin.Config.Bind("游戏设定", "切换姿势(特殊)", KeyCode.F7, "切换特化战斗姿势(随机选择)");
+            changeAnimBack = plugin.Config.Bind("游戏设定", "切换姿势(还原)", KeyCode.F8, "切换回默认战斗姿势");
 
             cameraFocusMode = plugin.Config.Bind("相机设置", "战斗相机跟随方式", CameraFocusMode.Attacker, "战斗时相机如何跟随，游戏默认跟随攻击者");
             cameraFree = plugin.Config.Bind("相机设置", "场景自由视角", false, "是否开启自由视角");
@@ -63,7 +63,7 @@ namespace PathOfWuxia
                 Time.timeScale = Time.timeScale == 1.0f ? Math.Max(0.1f, speedValue.Value) : 1.0f;
             }
 
-            if (Input.GetKeyDown(changeAnim.Value))
+            if (Input.GetKeyDown(changeAnim.Value) && Game.BattleStateMachine != null)
             {
                 if (IdleAnimOverrides == null)
                 {
@@ -81,7 +81,7 @@ namespace PathOfWuxia
                     }
                 }
             }
-            if (Input.GetKeyDown(changeAnimBack.Value))
+            if (Input.GetKeyDown(changeAnimBack.Value) && Game.BattleStateMachine != null)
             {
                 WuxiaUnit unit = Traverse.Create(Game.BattleStateMachine).Field("_currentUnit").GetValue<WuxiaUnit>();
                 if (unit != null)

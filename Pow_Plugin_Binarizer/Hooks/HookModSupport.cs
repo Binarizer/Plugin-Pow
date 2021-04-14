@@ -28,11 +28,17 @@ namespace PathOfWuxia
     {
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            modPath = plugin.Config.Bind("Mod设置", "Mod路径", "", "该项必须启动前从设置中修改才可生效");
-            modTheme = plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
-            modCustomVoice = plugin.Config.Bind("Mod设置", "Mod语音开关", false, "吧友配音");
-            modBattleVoicePath = plugin.Config.Bind("Mod设置", "Mod战斗语音路径", "audio/voice/um_{0}_{1}.ogg", "可更改相对路径和扩展名");
-            modTalkVoicePath = plugin.Config.Bind("Mod设置", "Mod对话语音路径", "audio/voice/talk_{0}.ogg", "可更改相对路径和扩展名");
+            modPath = plugin.Config.Bind("Mod设置", "-Mod路径-", "", "Mod加载路径，设为空则不加载Mod，须重启游戏生效");
+            if (!modPath.Value.IsNullOrEmpty())
+            {
+                GlobalLib.ModPath = modPath.Value;
+                modTheme = plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
+                modCustomVoice = plugin.Config.Bind("Mod设置", "Mod语音开关", false, "吧友配音");
+                modBattleVoicePath = plugin.Config.Bind("Mod设置", "Mod战斗语音路径", "audio/voice/um_{0}_{1}.ogg", "可更改相对路径和扩展名");
+                modTalkVoicePath = plugin.Config.Bind("Mod设置", "Mod对话语音路径", "audio/voice/talk_{0}.ogg", "可更改相对路径和扩展名");
+
+                ModPatch_ExtraAssetBundle(BundleManagerBySheet.Instance());
+            }
         }
 
         public void OnUpdate()
@@ -57,13 +63,13 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(ResourceManager), "Reset", new Type[] { typeof(ICoroutineRunner), typeof(Heluo.Mod.IModManager), typeof(Type[]) })]
         public static void ModPatch_Reset(ResourceManager __instance, ICoroutineRunner runner)
         {
-            if (!modPath.Value.IsNullOrEmpty() && Directory.Exists(Path.GetFullPath(modPath.Value)))
+            if (!GlobalLib.ModPath.IsNullOrEmpty() && Directory.Exists(Path.GetFullPath(GlobalLib.ModPath)))
             {
                 var provider = Traverse.Create(__instance).Field("provider").GetValue<IChainedResourceProvider>();
-                var thirdSuccessor = provider.Successor.Successor;
-                var modResourceProvider = new ModResourceProvider(runner, modPath.Value);
+                var assetBundleProvider = provider.Successor.Successor;
+                var modResourceProvider = new ModResourceProvider(runner, GlobalLib.ModPath);
                 provider.Successor = modResourceProvider;
-                modResourceProvider.Successor = thirdSuccessor;
+                modResourceProvider.Successor = assetBundleProvider;
 
                 Console.WriteLine("当前ResourceProvider链表: ");
                 while (provider != null)
@@ -194,7 +200,7 @@ namespace PathOfWuxia
         [HarmonyPrefix, HarmonyPatch(typeof(MusicPlayer), "ChangeMusic", new Type[] { typeof(string), typeof(float), typeof(float), typeof(bool), typeof(bool), typeof(bool) })]
         public static bool ModPatch_ChangeTheme(ref string _name)
         {
-            if (_name == "In_theme_01.wav" && modTheme.Value != string.Empty)
+            if (!GlobalLib.ModPath.IsNullOrEmpty() && !modTheme.Value.IsNullOrEmpty() && _name == "In_theme_01.wav")
                 _name = modTheme.Value;
             return true;
         }
@@ -310,8 +316,8 @@ namespace PathOfWuxia
                 }
             }
             string mapId = battleGrid?.MapId;
-            Console.WriteLine("当前MapId="+ Game.GameData.MapId);
-            Console.WriteLine("需要MapId="+ mapId);
+            Console.WriteLine("当前MapId=" + Game.GameData.MapId);
+            Console.WriteLine("需要MapId=" + mapId);
             if (mapId == Game.GameData.MapId)
             {
                 Game.FSM.SendEvent("BATTLE", new Heluo.FSM.Main.BattleEventArgs() { BattleId = battleId });
@@ -339,13 +345,40 @@ namespace PathOfWuxia
             Console.WriteLine("eventName=" + eventName);
             Console.WriteLine("e=" + e);
             Console.WriteLine("当前MapId=" + Game.GameData.MapId);
-            if (!CachedBattleId.IsNullOrEmpty() && eventName == "CINEMATIC" && e==null)
+            if (!CachedBattleId.IsNullOrEmpty() && eventName == "CINEMATIC" && e == null)
             {
                 eventName = "BATTLE";
                 e = new Heluo.FSM.Main.BattleEventArgs() { BattleId = CachedBattleId };
                 CachedBattleId = "";
             }
             return true;
+        }
+
+        // 6 额外AssetBundle资源读取
+        public void ModPatch_ExtraAssetBundle(BundleManagerBySheet __instance)
+        {
+            if (!GlobalLib.ModPath.IsNullOrEmpty())
+            {
+                string extraSheetFile = string.Format("{0}/AssetBundleSheet.sheet", GlobalLib.ModPath);
+                if (File.Exists(extraSheetFile))
+                {
+                    Console.WriteLine("找到Mod新增Sheet = " + extraSheetFile);
+                    byte[] array = File.ReadAllBytes(extraSheetFile);
+                    AssetBundleSheet modSheet = JsonConvert.DeserializeObject<AssetBundleSheet>(Encoding.UTF8.GetString(array));
+                    AssetBundleSheet sourceSheet = Traverse.Create(__instance).Field("bundleSheet").GetValue<AssetBundleSheet>();
+                    Console.WriteLine(string.Format("扩展Sheet bundle={0}, file={1}", modSheet.BundleList.Count, modSheet.FilesInfo.Count));
+                    Console.WriteLine(string.Format("原始Sheet bundle={0}, file={1}", sourceSheet.BundleList.Count, sourceSheet.FilesInfo.Count));
+                    foreach (var bundle in modSheet.BundleList)
+                    {
+                        sourceSheet.BundleList.Add(bundle.Key,bundle.Value);
+                    }
+                    foreach (var file in modSheet.FilesInfo)
+                    {
+                        sourceSheet.FilesInfo.Add(file.Key,file.Value);
+                    }
+                    Console.WriteLine(string.Format("合并Sheet bundle={0}, file={1}", sourceSheet.BundleList.Count, sourceSheet.FilesInfo.Count));
+                }
+            }
         }
     }
 }

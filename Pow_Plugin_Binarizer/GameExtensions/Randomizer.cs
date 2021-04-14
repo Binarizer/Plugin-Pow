@@ -141,6 +141,8 @@ namespace PathOfWuxia
 
                     if (info == null || info.Id.IsNullOrEmpty())
                         return false;
+                    if (info.Property[CharacterProperty.Max_HP].Value <= 0)
+                        return false;
 
                     if (!UserData.IsTypeRegistered<CharacterInfoData>())
                         UserData.RegisterType<CharacterInfoData>(InteropAccessMode.Default, null);

@@ -6,6 +6,7 @@ using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 using BepInEx;
+using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
 using Heluo.Data;
@@ -30,7 +31,34 @@ namespace PathOfWuxia
             {
                 Console.WriteLine(t.Name.ToString());
             }
+
+            ExtDrop = plugin.Config.Bind("扩展功能", "战场掉落", false, "特定关卡敌方掉落，游玩剑击江湖请勾选");
+            if (ExtDrop.Value)
+            {
+                DropRateCharacter = plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, "人物加入道具掉落率");
+                DropRateSkillMantra = plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, "招式和心法秘籍掉落率");
+                DropRateEquip = plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, "装备掉落率");
+            }
+            ExtDrop.SettingChanged += (o, e) =>
+            {
+                if (ExtDrop.Value)
+                {
+                    DropRateCharacter = plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, "人物加入道具掉落率");
+                    DropRateSkillMantra = plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, "招式和心法秘籍掉落率");
+                    DropRateEquip = plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, "装备掉落率");
+                }
+                else
+                {
+                    plugin.Config.Remove(DropRateCharacter.Definition);
+                    plugin.Config.Remove(DropRateSkillMantra.Definition);
+                    plugin.Config.Remove(DropRateEquip.Definition);
+                }
+            };
         }
+        private static ConfigEntry<bool> ExtDrop;
+        private static ConfigEntry<float> DropRateCharacter;
+        private static ConfigEntry<float> DropRateSkillMantra;
+        private static ConfigEntry<float> DropRateEquip;
 
         public void OnUpdate()
         {
@@ -64,32 +92,12 @@ namespace PathOfWuxia
             __result = PropsEffectFormatter.Instance.Create(from);
             return false;
         }
-        public static CharacterMapping GetUICharacterMapping()
-        {
-            try
-            {
-                var uiHome = Game.UI.Get<UIHome>();
-                var ctrlHome = Traverse.Create(uiHome).Field("controller").GetValue<CtrlHome>();
-                var cml = Traverse.Create(ctrlHome).Field("characterMapping").GetValue<List<CharacterMapping>>();
-                if (cml.Count == 0)
-                    ctrlHome.OnShow();
-                var ci = Traverse.Create(ctrlHome).Field("communityIndex").GetValue<int>();
-                if (ci >= cml.Count)
-                    Traverse.Create(ctrlHome).Field("communityIndex").SetValue(cml.Count - 1);
-                return cml[ci];
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-
         [HarmonyPrefix, HarmonyPatch(typeof(CtrlMedicine), "OnShow")]
         public static bool ModExt_NewPropsUI(CtrlMedicine __instance)
         {
             var mapping = Traverse.Create(__instance).Field("mapping");
             var sort = Traverse.Create(__instance).Field("sort").GetValue<List<PropsInfo>>();
-            mapping.SetValue(GetUICharacterMapping());
+            mapping.SetValue(GlobalLib.GetUICharacterMapping());
             sort.Clear();
             foreach (KeyValuePair<string, InventoryData> keyValuePair in Game.GameData.Inventory)
             {
@@ -97,31 +105,39 @@ namespace PathOfWuxia
                 Props props = Game.Data.Get<Props>(key);
                 if (props != null && props.PropsType == PropsType.Medicine)
                 {
-                    bool flag = false;
-                    if (props.CanUseID != null)
+                    bool show = false;
+                    if (props.CanUseID != null && props.CanUseID.Count > 0)
                     {
-                        if (props.CanUseID.Count == 0)
+                        for (int i = 0; i < props.CanUseID.Count; i++)
                         {
-                            flag = true;
-                        }
-                        else
-                        {
-                            for (int i = 0; i < props.CanUseID.Count; i++)
+                            string text = props.CanUseID[i];
+                            if (!text.IsNullOrEmpty() && text == mapping.GetValue<CharacterMapping>().Id)
                             {
-                                string text = props.CanUseID[i];
-                                if (!text.IsNullOrEmpty() && text == mapping.GetValue<CharacterMapping>().Id)
-                                {
-                                    flag = true;
-                                    break;
-                                }
+                                show = true;
+                                break;
                             }
                         }
                     }
                     else
                     {
-                        flag = true;
+                        show = true;
+                        if (props.PropsCategory >= PropsCategory.Fist_Secret_Scroll && props.PropsCategory <= PropsCategory.Throw_Secret_Scroll && key.StartsWith("p_scroll"))
+                        {
+                            foreach (var pe in props.PropsEffect)
+                            {
+                                if (pe is PropsLearnSkill pls)
+                                {
+                                    PropsCategory skillType = Game.Data.Get<Skill>(pls.Id).Type;
+                                    if (!GlobalLib.HasSkillType(mapping.GetValue<CharacterMapping>().InfoId, skillType))
+                                    {
+                                        show = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
-                    if (flag)
+                    if (show)
                     {
                         PropsInfo propsInfo = new PropsInfo(key)
                         {
@@ -164,30 +180,28 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(DataManager), "Inital")]
         static void ModExt_NewProps_DefaultData(DataManager __instance)
         {
-            var dict = Traverse.Create(__instance).Field("dict").GetValue<IDictionary<Type, IDictionary>>();
-            IDictionary dictionary = dict[typeof(Props)];
-            IDictionary dictionary4 = dict[typeof(Skill)];
-            IDictionary dictionary2 = dict[typeof(Mantra)];
-            // 添加武功秘籍
-            foreach (Skill skill in dictionary4.Values)
+            // 为每种心法和招式添加对应秘籍
+            var DictProps = __instance.Get<Props>(); 
+            var DictSkill = __instance.Get<Skill>();
+            var DictMantra = __instance.Get<Mantra>();
+            foreach (Skill skill in DictSkill.Values)
             {
                 Props props = new Props
                 {
                     Id = "p_scroll_" + skill.Id,
                     Description = skill.Description,
                     PropsType = PropsType.Medicine,
-                    PropsCategory = skill.Type - 101 + 401,
+                    PropsCategory = GlobalLib.GetScrollType(skill.Type),
                     Name = skill.Name + "秘籍",
                     PropsEffect = new List<PropsEffect>
-                        {
-                            new PropsLearnSkill(skill.Id)
-                        },
+                    {
+                        new PropsLearnSkill(skill.Id)
+                    },
                     PropsEffectDescription = "学会招式：" + skill.Name
                 };
-                dictionary.Add(props.Id, props);
+                DictProps.Add(props.Id, props);
             }
-            // 添加心法秘籍
-            foreach (Mantra mantra in dictionary2.Values)
+            foreach (Mantra mantra in DictMantra.Values)
             {
                 Props props2 = new Props
                 {
@@ -202,19 +216,19 @@ namespace PathOfWuxia
                         },
                     PropsEffectDescription = "学会心法：" + mantra.Name
                 };
-                dictionary.Add(props2.Id, props2);
+                DictProps.Add(props2.Id, props2);
             }
-            // 添加人物加入道具
-            IDictionary dictionary5 = dict[typeof(Npc)];
-            IDictionary dictionary3 = dict[typeof(Reward)];
-            foreach (Npc npc in dictionary5.Values)
+            // 为每个NPC添加人物加入道具
+            var DictNpc = __instance.Get<Npc>();
+            var DictReward = __instance.Get<Reward>();
+            foreach (Npc npc in DictNpc.Values)
             {
                 Props props3 = new Props
                 {
                     Id = "p_npcj_" + npc.Id,
                     Description = npc.Name + "加入",
-                    PropsType = PropsType.Medicine,
-                    PropsCategory = PropsCategory.Other_Secret_Scroll,
+                    PropsType = PropsType.Quest,
+                    PropsCategory = PropsCategory.Other_Quest,
                     Name = npc.Name + "加入",
                     PropsEffect = new List<PropsEffect>
                         {
@@ -222,7 +236,7 @@ namespace PathOfWuxia
                         },
                     PropsEffectDescription = "加入队友：" + npc.Name
                 };
-                dictionary.Add(props3.Id, props3);
+                DictProps.Add(props3.Id, props3);
                 string s = "{\"LogicalNode\":[{\"CommunityAction\":\"" + npc.Id + "\",True}],0}";
                 Reward reward = new Reward
                 {
@@ -231,48 +245,113 @@ namespace PathOfWuxia
                     IsShowMessage = true,
                     Rewards = new BaseFlowGraph(OutputNodeConvert.Deserialize(s))
                 };
-                dictionary3.Add(reward.Id, reward);
+                DictReward.Add(reward.Id, reward);
             }
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(CtrlInventory), "Sort")]
+        static void ModExt_CommunityJoin(CtrlInventory __instance)
+        {
+            var array = Traverse.Create(__instance).Field("sortInv").Field("array").GetValue() as List<PropsInfo>[];
+            if (array[2]!= null)
+            {
+                foreach(PropsInfo pi in array[2])
+                {
+                    if (pi.Id.StartsWith("p_npcj_"))
+                        pi.ConditionStatus = PropsInfo.PropsConditionStatus.AllPass;    // 人物加入道具可直接使用
+                }
+            }
+        }
+        [HarmonyPrefix, HarmonyPatch(typeof(CtrlFormInventory), "UseProps")]
+        static bool ModExt_CommunityJoin2(CtrlFormInventory __instance)
+        {
+            if (__instance.GetType() == typeof(CtrlInventory) )
+            {
+                var t = Traverse.Create(__instance);
+                var sort = t.Field("sort").GetValue<List<PropsInfo>>();
+                int propsIndex = t.Field("propsIndex").GetValue<int>();
+                string pid = sort[propsIndex].Item.Id;
+                if (pid.StartsWith("p_npcj_"))
+                {
+                    // 在Inventory菜单使用人物加入道具
+                    Game.GameData.Inventory.UseProps(pid, Game.GameData.Character["Player"]);
+                    t.Method("Sort").GetValue();
+                    t.Method("UpdateInventory", 2).GetValue();
+                    Traverse.Create(Game.UI.Get<UIHome>()).Property("controller").Method("OnShow").GetValue();
+                }
+                return false;
+            }
+            return true;
         }
         [HarmonyPostfix, HarmonyPatch(typeof(WuxiaUnit), "ProcessDropProps")]
         static void ModExt_BattleGroundDrop(WuxiaUnit __instance)
         {
-            List<string> drops = new List<string>();
+            if (__instance.faction != Faction.Enemy)
+                return;
+
             // a 人物加入道具
             if (!Game.GameData.Community.ContainsKey(__instance.UnitID))
-                drops.Add("p_npcj_" + __instance.UnitID);
+            {
+                ExtDrops.Add(new BattleDropProp_Ext()
+                {
+                    Id = "p_npcj_" + __instance.UnitID,
+                    Amount = 1,
+                    Rate = DropRateCharacter.Value
+                });
+            }
             // b 装备
             Props equip = __instance.info.Equip.GetEquip(EquipType.Weapon);
             if (equip != null)
-                drops.Add(equip.Id);
+            {
+                ExtDrops.Add(new BattleDropProp_Ext()
+                {
+                    Id = equip.Id,
+                    Amount = 1,
+                    Rate = DropRateEquip.Value
+                });
+            }
             Props equip2 = __instance.info.Equip.GetEquip(EquipType.Cloth);
             if (equip2 != null)
-                drops.Add(equip2.Id);
+            {
+                ExtDrops.Add(new BattleDropProp_Ext()
+                {
+                    Id = equip2.Id,
+                    Amount = 1,
+                    Rate = DropRateEquip.Value
+                });
+            }
             Props equip3 = __instance.info.Equip.GetEquip(EquipType.Jewelry);
             if (equip3 != null)
-                drops.Add(equip3.Id);
+            {
+                ExtDrops.Add(new BattleDropProp_Ext()
+                {
+                    Id = equip3.Id,
+                    Amount = 1,
+                    Rate = DropRateEquip.Value
+                });
+            }
             // c 内功
             if (__instance.CurrentMantra != null)
-                drops.Add("p_scroll_" + __instance.CurrentMantra.Id);
+            {
+                ExtDrops.Add(new BattleDropProp_Ext()
+                {
+                    Id = "p_scroll_" + __instance.CurrentMantra.Id,
+                    Amount = 1,
+                    Rate = DropRateSkillMantra.Value
+                });
+            }
             // d 招式
             if (__instance.LearnedSkills != null)
             {
                 foreach (var skill in __instance.LearnedSkills.Values)
                 {
-                    drops.Add("p_scroll_" + skill.Id);
+                    ExtDrops.Add(new BattleDropProp_Ext()
+                    {
+                        Id = "p_scroll_" + skill.Id,
+                        Amount = 1,
+                        Rate = DropRateSkillMantra.Value
+                    });
                 }
-            }
-
-            int count = UnityEngine.Random.Range(1, 5);
-            for (int i = 0; i < count; ++i) 
-            {
-                ExtDrops.Add(new BattleDropProp_Ext()
-                {
-                    Id = drops.Random(),
-                    Amount = 1,
-                    Rate = 0.1f
-                });
-            }          
+            }      
         }
 
         // 5 战场掉落物品扩展
@@ -342,7 +421,9 @@ namespace PathOfWuxia
         static bool ModExt_DropProps_UI(WGRewardList __instance, List<BattleDropProp> list)
         {
             int uid = 0;
-            var newlist = new List<BattleDropProp>(list);
+            var newlist = new List<BattleDropProp>();
+            if (list != null)
+                newlist.AddRange(list);
             for (int i = 0; i < newlist.Count; i++)
             {
                 BattleDropProp_Ext battleDropProp = newlist[i] as BattleDropProp_Ext;  // 改成Ext版
@@ -409,6 +490,7 @@ namespace PathOfWuxia
             {
                 int tile = tileNumber;
                 AddUnitHelper.ProcessCellNumber(__instance, ref tile);
+                Console.WriteLine(string.Format("元tile={0}, 新tile={1}", tileNumber, tile));
                 try
                 {
                     WuxiaUnit wuxiaUnit = __instance.UnitGenerator.CreateUnit(unitid, faction, tile, isParty);
@@ -458,6 +540,38 @@ namespace PathOfWuxia
                     }
                 }
             }
+        }
+
+        // 8 武器装备按武功筛选排序
+        [HarmonyPostfix, HarmonyPatch(typeof(Inventory), "CheckCanUse", new Type[] { typeof(string), typeof(string) })]
+        public static void ModExt_PropsCanUse(Inventory __instance, ref bool __result, string id, string CharacterId)
+        {
+            // Mod武器大多没写限定，须通过检测武功筛选
+            if (__result == false)
+                return;
+            Props props = Game.Data.Get<Props>(id);
+            if (props != null && props.PropsType == PropsType.Weapon)
+            {
+                __result = GlobalLib.HasSkillType(CharacterId, props.PropsCategory);
+            }
+        }
+        static void SortInventory(InventoryWindowInfo inventoryWindowInfo, bool removeUnavailable = true)
+        {
+            if (removeUnavailable)
+                inventoryWindowInfo.Sort.RemoveAll(props => { return props.ConditionStatus != PropsInfo.PropsConditionStatus.AllPass; });
+            inventoryWindowInfo.Sort.Sort((a, b) => a.Item.PropsCategory.CompareTo(b.Item.PropsCategory));
+        }
+        [HarmonyPrefix, HarmonyPatch(typeof(UIEquip), "OpenPropsWindow", new Type[] { typeof(InventoryWindowInfo) })]
+        public static bool ModExt_PropsCanUse2(InventoryWindowInfo inventoryWindowInfo)
+        {
+            SortInventory(inventoryWindowInfo);
+            return true;
+        }
+        [HarmonyPrefix, HarmonyPatch(typeof(UIBattle), "OpenWeaponWindow", new Type[] { typeof(InventoryWindowInfo) })]
+        public static bool ModExt_PropsCanUse3(InventoryWindowInfo inventoryWindowInfo)
+        {
+            SortInventory(inventoryWindowInfo);
+            return true;
         }
     }
 }

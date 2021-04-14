@@ -63,7 +63,7 @@ namespace PathOfWuxia
             }
             catch
             {
-                Debug.LogError("这个格子数字错误：" + num);
+                Console.WriteLine("这个格子数字错误：" + num);
             }
         }
 

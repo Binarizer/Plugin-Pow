@@ -13,7 +13,7 @@ namespace PathOfWuxia
         public new string ToText()
         {
             if (Rate != 1f)
-                return string.Format("({0},{1},{2})", this.Id, this.Amount, this.Rate);
+                return string.Format("({0},{1},{2})", Id, Amount, Rate);
             return base.ToText();
         }
     }

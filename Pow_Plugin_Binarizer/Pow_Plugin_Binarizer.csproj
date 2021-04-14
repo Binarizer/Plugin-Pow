@@ -329,6 +329,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GameExtensions\BattleResultAddRands.cs" />
+    <Compile Include="GameExtensions\GlobalLib.cs" />
     <Compile Include="GameExtensions\PropsEffectFormatter.cs" />
     <Compile Include="GameExtensions\ModDataManager.cs" />
     <Compile Include="GameExtensions\ModExtensionSaveData.cs" />
