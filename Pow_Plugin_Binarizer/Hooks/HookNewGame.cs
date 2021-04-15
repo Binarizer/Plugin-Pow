@@ -82,16 +82,18 @@ namespace PathOfWuxia
         }
 
         // 3 新随机方法
-        static void updateAttributes(CtrlRegistration instance)
+        static void UpdateAttributes(CtrlRegistration instance)
         {
             var data = Traverse.Create(instance).Field("player_info_data").GetValue<CharacterInfoData>();
             var Tpoint = Traverse.Create(instance).Field("point");
-            FourAttributesInfo fourAttributesInfo = new FourAttributesInfo();
-            fourAttributesInfo.Str = data.GetUpgradeableProperty(CharacterUpgradableProperty.Str).ToString();
-            fourAttributesInfo.Vit = data.GetUpgradeableProperty(CharacterUpgradableProperty.Vit).ToString();
-            fourAttributesInfo.Dex = data.GetUpgradeableProperty(CharacterUpgradableProperty.Dex).ToString();
-            fourAttributesInfo.Spr = data.GetUpgradeableProperty(CharacterUpgradableProperty.Spi).ToString();
-            fourAttributesInfo.Point = Tpoint.GetValue<int>().ToString();
+            FourAttributesInfo fourAttributesInfo = new FourAttributesInfo
+            {
+                Str = data.GetUpgradeableProperty(CharacterUpgradableProperty.Str).ToString(),
+                Vit = data.GetUpgradeableProperty(CharacterUpgradableProperty.Vit).ToString(),
+                Dex = data.GetUpgradeableProperty(CharacterUpgradableProperty.Dex).ToString(),
+                Spr = data.GetUpgradeableProperty(CharacterUpgradableProperty.Spi).ToString(),
+                Point = Tpoint.GetValue<int>().ToString()
+            };
             data.UpgradeProperty(true);
             Traverse.Create(instance).Field("view").GetValue<UIRegistration>().UpdateFourAttributes(fourAttributesInfo);
         }
@@ -121,7 +123,7 @@ namespace PathOfWuxia
             }
 
             Traverse.Create(__instance).Field("point").SetValue(0);
-            updateAttributes(__instance);
+            UpdateAttributes(__instance);
             return false;
         }
         [HarmonyPrefix, HarmonyPatch(typeof(CtrlRegistration), "set_character_upgradable_property", new Type[] { typeof(CharacterUpgradableProperty), typeof(int) })]
@@ -142,54 +144,39 @@ namespace PathOfWuxia
             }
             data.SetUpgradeablePropertyLevel(property, num2);
             Tpoint.SetValue(num);
-            updateAttributes(__instance);
+            UpdateAttributes(__instance);
             return false;
         }
 
         // 4 头像模型替换
-        [HarmonyPostfix, HarmonyPatch(typeof(CtrlRegistration), "InitialRewards")]
-        public static void StartPatch_SetPlayerModel(CtrlRegistration __instance)
+        public static void ReplacePlayerExteriorData()
         {
-            CharacterExteriorData playerExterior = Traverse.Create(__instance).Field("player_extreior").GetValue<CharacterExteriorData>();
-            if (playerExterior != null && newGameExteriorId.Value != string.Empty)
+            CharacterExteriorData playerExteriorData = Game.GameData.Exterior[GameConfig.Player];
+            if (playerExteriorData != null && newGameExteriorId.Value != string.Empty)
             {
                 CharacterExterior characterExterior = Game.Data.Get<CharacterExterior>(newGameExteriorId.Value);
                 if (characterExterior != null)
                 {
-                    string s = (playerExterior.Gender == Gender.Male) ? "in0101" : "in0115";
-                    CharacterExterior characterExterior2 = Game.Data.Get<CharacterExterior>(s);
-                    characterExterior.Model = characterExterior.Model;
-                    characterExterior.Gender = characterExterior.Gender;
-                    characterExterior.Size = characterExterior.Size;
-
-                    playerExterior.Model = characterExterior.Model;
-                    playerExterior.Gender = characterExterior.Gender;
-                    playerExterior.Size = characterExterior.Size;
-                    playerExterior.Protrait = newGamePortraitOverride.Value.IsNullOrEmpty() ? characterExterior.Protrait : newGamePortraitOverride.Value;
+                    CharacterExterior exterior = Game.Data.Get<CharacterExterior>(playerExteriorData.Id);
+                    playerExteriorData.Id = exterior.Id = characterExterior.Id;
+                    playerExteriorData.Model = exterior.Model = characterExterior.Model;
+                    playerExteriorData.Gender = exterior.Gender = characterExterior.Gender;
+                    playerExteriorData.Size = exterior.Size = characterExterior.Size;
+                    playerExteriorData.Protrait = exterior.Protrait = newGamePortraitOverride.Value.IsNullOrEmpty() ? characterExterior.Protrait : newGamePortraitOverride.Value;
                 }
             }
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(CtrlRegistration), "InitialRewards")]
+        public static void StartPatch_SetPlayerModel()
+        {
+            ReplacePlayerExteriorData();
         }
         [HarmonyPostfix, HarmonyPatch(typeof(ChangeCharacterProtraitAndModel), "GetValue")]
         public static void StartPatch_SetPlayerModel2(ChangeCharacterProtraitAndModel __instance, bool __result)
         {
             if (__instance.id == GameConfig.Player && __result)
             {
-                CharacterExteriorData playerExterior = Game.GameData.Exterior[GameConfig.Player];
-                if (newGameExteriorId.Value != string.Empty)
-                {
-                    CharacterExterior characterExterior = Game.Data.Get<CharacterExterior>(newGameExteriorId.Value);
-                    if (characterExterior != null)
-                    {
-                        playerExterior.Model = characterExterior.Model;
-                        playerExterior.Gender = characterExterior.Gender;
-                        playerExterior.Size = characterExterior.Size;
-                        playerExterior.Protrait = characterExterior.Protrait;
-                    }
-                }
-                if (newGamePortraitOverride.Value != string.Empty)
-                {
-                    playerExterior.Protrait = newGamePortraitOverride.Value;
-                }
+                ReplacePlayerExteriorData();
             }
         }
         [HarmonyPostfix, HarmonyPatch(typeof(ChangeCharacterIdentity), "GetValue")]
@@ -197,19 +184,7 @@ namespace PathOfWuxia
         {
             if (__instance.id == GameConfig.Player && __result)
             {
-                CharacterExteriorData playerExterior = Game.GameData.Exterior[GameConfig.Player];
-                if (newGameExteriorId.Value != string.Empty)
-                {
-                    CharacterExterior characterExterior = Game.Data.Get<CharacterExterior>(newGameExteriorId.Value);
-                    if (characterExterior != null)
-                    {
-                        playerExterior.Protrait = characterExterior.Protrait;
-                    }
-                }
-                if (newGamePortraitOverride.Value != string.Empty)
-                {
-                    playerExterior.Protrait = newGamePortraitOverride.Value;
-                }
+                ReplacePlayerExteriorData();
             }
         }
 
@@ -230,7 +205,22 @@ namespace PathOfWuxia
                     {
                         var characterExterior = collection.First();
                         if (!characterExterior.AnimMapId.IsNullOrEmpty())
+                        {
                             clipName = string.Format("{0}_special_await{1:00}", characterExterior.AnimMapId, 0);
+                            animationClip = __instance.GetAnimationClip(clipName);
+                            if (animationClip == null)
+                            {
+                                var animMap = Game.Data.Get<AnimationMapping>(characterExterior.AnimMapId);
+                                foreach (var (state, clip) in animMap)
+                                {
+                                    if (!clip.IsNullOrEmpty() && __instance.GetAnimationClip(clip) != null)
+                                    {
+                                        clipName = clip;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         animationClip = __instance.GetAnimationClip(clipName);
                         if (animationClip == null)
                             clipName = characterExterior.Gender == Gender.Male ? "in0101_special_await00" : "in0115_special_await00";

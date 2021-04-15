@@ -5,7 +5,7 @@ using BepInEx;
 
 namespace PathOfWuxia
 {
-    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.1")]
+    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.2")]
     public class PluginBinarizer : BaseUnityPlugin
     {
         void RegisterHook(IHook hook)
@@ -31,6 +31,7 @@ namespace PathOfWuxia
             RegisterHook(new HookSkillExp());
             RegisterHook(new HookTeamManage());
             RegisterHook(new HookInitiactiveBattle());
+            RegisterHook(new HookDuelPractice());
         }
 
         void Start()

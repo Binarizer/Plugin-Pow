@@ -25,7 +25,8 @@ namespace PathOfWuxia
 
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            teamManageOn = plugin.Config.Bind("自由组队", "·开启自由组队模式", false, "开启自由组队模式，用来调整队伍、通过剧情等，剑击江湖mod请打开（需重开设置菜单）");
+            teamManageOn = plugin.Config.Bind("自由组队", "开启自由组队模式", false,
+                new ConfigDescription("开启自由组队模式，用来调整队伍、通过剧情等，剑击江湖mod请打开", null, new ConfigurationManagerAttributes { Order = 2 }));
             if (teamManageOn.Value)
             {
                 BindConfig(plugin);
@@ -51,7 +52,8 @@ namespace PathOfWuxia
 
         static void BindConfig(BaseUnityPlugin plugin)
         {
-            teamMemberMax = plugin.Config.Bind("自由组队", "最大队伍人数", 4, "最大队伍人数");
+            teamMemberMax = plugin.Config.Bind("自由组队", "最大队伍人数", 4,
+                new ConfigDescription("最大队伍人数", new AcceptableValueRange<int>(4, 9), new ConfigurationManagerAttributes { Order = 1 }));
             teamMemberAdd = plugin.Config.Bind("自由组队", "队伍加入当前角色", KeyCode.F3, "加入队伍");
             teamMemberRemove = plugin.Config.Bind("自由组队", "队伍移除当前角色", KeyCode.F4, "移出队伍");
             teamMemberRemoveAll = plugin.Config.Bind("自由组队", "队伍移除全部队友", KeyCode.F5, "清空队伍");

@@ -11,11 +11,7 @@ using BepInEx.Configuration;
 using Heluo;
 using Heluo.Data;
 using Heluo.UI;
-using Heluo.Utility;
-using Heluo.Flow;
-using Heluo.Manager;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace PathOfWuxia
 {
@@ -256,7 +252,7 @@ namespace PathOfWuxia
 
                 int.TryParse(item.Remark, out int value);
                 value = Math.Max(5, value + UnityEngine.Random.Range(-10, 20));
-                Props newProps = RewardUniqueEquipByValue.CreateUniquePropsByValue(sourceId, value);
+                Props newProps = GlobalLib.CreateUniquePropsByValue(sourceId, value);
                 newProps.Name = source.Name + "+";  // mark as reforged
                 newProps.Remark = value.ToString();   // use remark to save value
                 Game.GameData.Inventory.Add(newProps.Id, 1);

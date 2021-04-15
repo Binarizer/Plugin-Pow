@@ -1,8 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
 using System.Text;
 using System.Timers;
 using HarmonyLib;
@@ -23,29 +23,38 @@ using Newtonsoft.Json;
 
 namespace PathOfWuxia
 {
-    // Mod支持
+    // 多Mod支持
     public class HookModSupport : IHook
     {
+        static private BaseUnityPlugin Plugin = null;
+
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            modPath = plugin.Config.Bind("Mod设置", "-Mod路径-", "", "Mod加载路径，设为空则不加载Mod，须重启游戏生效");
-            if (!modPath.Value.IsNullOrEmpty())
-            {
-                GlobalLib.ModPath = modPath.Value;
-                modTheme = plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
-                modCustomVoice = plugin.Config.Bind("Mod设置", "Mod语音开关", false, "吧友配音");
-                modBattleVoicePath = plugin.Config.Bind("Mod设置", "Mod战斗语音路径", "audio/voice/um_{0}_{1}.ogg", "可更改相对路径和扩展名");
-                modTalkVoicePath = plugin.Config.Bind("Mod设置", "Mod对话语音路径", "audio/voice/talk_{0}.ogg", "可更改相对路径和扩展名");
-
-                ModPatch_ExtraAssetBundle(BundleManagerBySheet.Instance());
-            }
+            Plugin = plugin;
+            modBasePath = plugin.Config.Bind("Mod设置", "Mod路径", "Mods\\", new ConfigDescription("Mod主目录", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 3 }));
+            modBattleVoicePath = Plugin.Config.Bind("Mod设置", "Mod战斗语音路径", "audio/voice/um_{0}_{1}.ogg", new ConfigDescription("可更改相对路径和扩展名", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
+            modTalkVoicePath = Plugin.Config.Bind("Mod设置", "Mod对话语音路径", "audio/voice/talk_{0}.ogg", new ConfigDescription("可更改相对路径和扩展名", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
+            string[] dirs = null;
+            if (Directory.Exists(modBasePath.Value))
+                dirs = Directory.GetDirectories(modBasePath.Value);
+            modList = plugin.Config.Bind(
+                "Mod设置", "Mod集合",
+                dirs != null ? string.Join(",", from dir in dirs select (dir.Replace(modBasePath.Value, ""))) : "",
+                new ConfigDescription("多Mod以逗号分隔按顺序加载，设为空或有错则不加载Mod。须重启游戏生效", null, new ConfigurationManagerAttributes { Order = 2 })
+                );
+        }
+        static private void BindSubConfig()
+        {
+            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
+            modCustomVoice = Plugin.Config.Bind("Mod设置", "Mod语音开关", false, "配音开关");
         }
 
         public void OnUpdate()
         {
         }
 
-        static ConfigEntry<string> modPath;
+        static ConfigEntry<string> modBasePath;
+        static ConfigEntry<string> modList;
         static ConfigEntry<string> modTheme;
         static ConfigEntry<bool> modCustomVoice;
         static ConfigEntry<string> modBattleVoicePath;
@@ -63,14 +72,27 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(ResourceManager), "Reset", new Type[] { typeof(ICoroutineRunner), typeof(Heluo.Mod.IModManager), typeof(Type[]) })]
         public static void ModPatch_Reset(ResourceManager __instance, ICoroutineRunner runner)
         {
-            if (!GlobalLib.ModPath.IsNullOrEmpty() && Directory.Exists(Path.GetFullPath(GlobalLib.ModPath)))
+            string[] paths = modList.Value.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
+            if (paths.Length > 0)
             {
                 var provider = Traverse.Create(__instance).Field("provider").GetValue<IChainedResourceProvider>();
                 var assetBundleProvider = provider.Successor.Successor;
-                var modResourceProvider = new ModResourceProvider(runner, GlobalLib.ModPath);
-                provider.Successor = modResourceProvider;
-                modResourceProvider.Successor = assetBundleProvider;
+                var modResourceProvider = new ModResourceProvider(runner, modBasePath.Value, paths);
+                if (modResourceProvider.ModDirectories.Count > 0)
+                {
+                    // 替换原版ExternalResourceProvider
+                    GlobalLib.ModResource = modResourceProvider;
+                    provider.Successor = modResourceProvider;
+                    modResourceProvider.Successor = assetBundleProvider;
+                    BindSubConfig();
+                }
+                else
+                {
+                    // 官方目前没做外部资源，所以可直接跳过原版ExternalResourceProvider
+                    provider.Successor = assetBundleProvider;
+                }
 
+                // Debug
                 Console.WriteLine("当前ResourceProvider链表: ");
                 while (provider != null)
                 {
@@ -80,9 +102,9 @@ namespace PathOfWuxia
             }
         }
 
-        // 1 Mod支持增删表格
+        // 1 Mod支持增删表格(即多mod支持)
         [HarmonyPrefix, HarmonyPatch(typeof(DataManager), "ReadData", new Type[] { typeof(string) })]
-        public static bool ModPatch_ReadData(ref DataManager __instance, string path)
+        public static bool ModPatch_ReadData_Mod(ref DataManager __instance, string path)
         {
             var dict = Traverse.Create(__instance).Field("dict");
             var resource = Traverse.Create(__instance).Field("resource").GetValue<IResourceProvider>();
@@ -111,33 +133,42 @@ namespace PathOfWuxia
                         itemDic = (Activator.CreateInstance(typeItemDic, new object[] { fileData }) as IDictionary);
 
                         // 补充数据 *_modify.txt
-                        byte[] fileDataModify = resource.LoadBytes(path + itemType.Name + "_modify.txt");
-                        if (fileDataModify != null)
+                        if (GlobalLib.ModResource != null)
                         {
-                            IDictionary dicModify = (Activator.CreateInstance(typeItemDic, new object[]
+                            foreach (var dir in GlobalLib.ModResource.ModDirectories)
                             {
-                                fileDataModify
-                            }) as IDictionary);
-                            foreach (var key in dicModify.Keys)
-                            {
-                                if (itemDic.Contains(key))
-                                    itemDic[key] = dicModify[key];
-                                else
-                                    itemDic.Add(key, dicModify[key]);
+                                byte[] fileDataModify = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + "_modify.txt");
+                                if (fileDataModify != null)
+                                {
+                                    IDictionary dicModify = (Activator.CreateInstance(typeItemDic, new object[]
+                                    {
+                                        fileDataModify
+                                    }) as IDictionary);
+                                    foreach (var key in dicModify.Keys)
+                                    {
+                                        if (itemDic.Contains(key))
+                                            itemDic[key] = dicModify[key];
+                                        else
+                                            itemDic.Add(key, dicModify[key]);
+                                    }
+                                }
                             }
-                        }
-                        // 删除数据 *_remove.txt
-                        byte[] fileDataRemove = resource.LoadBytes(path + itemType.Name + "_remove.txt");
-                        if (fileDataRemove != null)
-                        {
-                            IDictionary dicRemove = (Activator.CreateInstance(typeItemDic, new object[]
+                            // 删除数据 *_remove.txt
+                            foreach (var dir in GlobalLib.ModResource.ModDirectories)
                             {
-                                fileDataRemove
-                            }) as IDictionary);
-                            foreach (var key in dicRemove.Keys)
-                            {
-                                if (itemDic.Contains(key))
-                                    itemDic.Remove(key);
+                                byte[] fileDataRemove = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + "_remove.txt");
+                                if (fileDataRemove != null)
+                                {
+                                    IDictionary dicRemove = (Activator.CreateInstance(typeItemDic, new object[]
+                                    {
+                                        fileDataRemove
+                                    }) as IDictionary);
+                                    foreach (var key in dicRemove.Keys)
+                                    {
+                                        if (itemDic.Contains(key))
+                                            itemDic.Remove(key);
+                                    }
+                                }
                             }
                         }
                     }
@@ -150,8 +181,8 @@ namespace PathOfWuxia
                             string @string = Encoding.UTF8.GetString(jsonData);
                             typeItemDic = typeof(Dictionary<,>).MakeGenericType(new Type[]
                             {
-                            typeof(string),
-                            itemType
+                                typeof(string),
+                                itemType
                             });
                             itemDic = (JsonConvert.DeserializeObject(@string, typeItemDic) as IDictionary);
                         }
@@ -200,7 +231,7 @@ namespace PathOfWuxia
         [HarmonyPrefix, HarmonyPatch(typeof(MusicPlayer), "ChangeMusic", new Type[] { typeof(string), typeof(float), typeof(float), typeof(bool), typeof(bool), typeof(bool) })]
         public static bool ModPatch_ChangeTheme(ref string _name)
         {
-            if (!GlobalLib.ModPath.IsNullOrEmpty() && !modTheme.Value.IsNullOrEmpty() && _name == "In_theme_01.wav")
+            if (GlobalLib.ModResource != null && !modTheme.Value.IsNullOrEmpty() && _name == "In_theme_01.wav")
                 _name = modTheme.Value;
             return true;
         }
@@ -354,31 +385,21 @@ namespace PathOfWuxia
             return true;
         }
 
-        // 6 额外AssetBundle资源读取
-        public void ModPatch_ExtraAssetBundle(BundleManagerBySheet __instance)
+        // 6 加载其他路径的AssetBundle
+        [HarmonyPrefix, HarmonyPatch(typeof(AssetBundleSheet), "GetBundleName", new Type[] { typeof(string) })]
+        public static bool ModPatch_AssetBundle(AssetBundleSheet __instance, string filePath, ref string __result)
         {
-            if (!GlobalLib.ModPath.IsNullOrEmpty())
+            string text = filePath.ToLower().Trim();
+            if (__instance.FilesInfo.ContainsKey(text))
             {
-                string extraSheetFile = string.Format("{0}/AssetBundleSheet.sheet", GlobalLib.ModPath);
-                if (File.Exists(extraSheetFile))
-                {
-                    Console.WriteLine("找到Mod新增Sheet = " + extraSheetFile);
-                    byte[] array = File.ReadAllBytes(extraSheetFile);
-                    AssetBundleSheet modSheet = JsonConvert.DeserializeObject<AssetBundleSheet>(Encoding.UTF8.GetString(array));
-                    AssetBundleSheet sourceSheet = Traverse.Create(__instance).Field("bundleSheet").GetValue<AssetBundleSheet>();
-                    Console.WriteLine(string.Format("扩展Sheet bundle={0}, file={1}", modSheet.BundleList.Count, modSheet.FilesInfo.Count));
-                    Console.WriteLine(string.Format("原始Sheet bundle={0}, file={1}", sourceSheet.BundleList.Count, sourceSheet.FilesInfo.Count));
-                    foreach (var bundle in modSheet.BundleList)
-                    {
-                        sourceSheet.BundleList.Add(bundle.Key,bundle.Value);
-                    }
-                    foreach (var file in modSheet.FilesInfo)
-                    {
-                        sourceSheet.FilesInfo.Add(file.Key,file.Value);
-                    }
-                    Console.WriteLine(string.Format("合并Sheet bundle={0}, file={1}", sourceSheet.BundleList.Count, sourceSheet.FilesInfo.Count));
-                }
+                __result = __instance.BundleList[__instance.FilesInfo[text]].AssetBundleName;
             }
+            else
+            {
+                Debug.Log("沒有包到這個路徑的檔案:" + text);
+                __result = null;
+            }
+            return false;
         }
     }
 }

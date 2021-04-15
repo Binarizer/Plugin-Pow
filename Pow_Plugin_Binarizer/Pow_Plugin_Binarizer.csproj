@@ -329,14 +329,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GameExtensions\BattleResultAddRands.cs" />
+    <Compile Include="GameExtensions\ConfigurationManagerAttribute.cs" />
     <Compile Include="GameExtensions\GlobalLib.cs" />
     <Compile Include="GameExtensions\PropsEffectFormatter.cs" />
     <Compile Include="GameExtensions\ModDataManager.cs" />
     <Compile Include="GameExtensions\ModExtensionSaveData.cs" />
     <Compile Include="GameExtensions\BattleResultAddParty.cs" />
+    <Compile Include="GameExtensions\RewardDuelProperty.cs" />
     <Compile Include="GameExtensions\RewardUniquePropsFromProps.cs" />
     <Compile Include="GameExtensions\RewardUniqueEquipByValue.cs" />
     <Compile Include="GameExtensions\RewardUniqueScroll.cs" />
+    <Compile Include="Hooks\HookDuelPractice.cs" />
     <Compile Include="Hooks\HookTeamManage.cs" />
     <Compile Include="Hooks\HookSkillExp.cs" />
     <Compile Include="Hooks\HookUniqueItem.cs" />

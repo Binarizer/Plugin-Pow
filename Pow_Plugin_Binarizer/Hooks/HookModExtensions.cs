@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
@@ -21,31 +20,21 @@ namespace PathOfWuxia
     // Mod扩展
     public class HookModExtensions : IHook
     {
+        static private BaseUnityPlugin Plugin = null;
+
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            // 7 添加扩展GameAction
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            modActionTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(OutputNode)) select t).ToList();
-            Console.WriteLine("Mod添加OutputNode:");
-            foreach (var t in modActionTypes)
-            {
-                Console.WriteLine(t.Name.ToString());
-            }
-
+            Plugin = plugin;
             ExtDrop = plugin.Config.Bind("扩展功能", "战场掉落", false, "特定关卡敌方掉落，游玩剑击江湖请勾选");
             if (ExtDrop.Value)
             {
-                DropRateCharacter = plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, "人物加入道具掉落率");
-                DropRateSkillMantra = plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, "招式和心法秘籍掉落率");
-                DropRateEquip = plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, "装备掉落率");
+                BindSubConfig();
             }
             ExtDrop.SettingChanged += (o, e) =>
             {
                 if (ExtDrop.Value)
                 {
-                    DropRateCharacter = plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, "人物加入道具掉落率");
-                    DropRateSkillMantra = plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, "招式和心法秘籍掉落率");
-                    DropRateEquip = plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, "装备掉落率");
+                    BindSubConfig();
                 }
                 else
                 {
@@ -54,11 +43,26 @@ namespace PathOfWuxia
                     plugin.Config.Remove(DropRateEquip.Definition);
                 }
             };
+
+            // 添加扩展OutputNode
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            modActionTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(OutputNode)) select t).ToList();
+            Console.WriteLine("Mod添加OutputNode:");
+            foreach (var t in modActionTypes)
+            {
+                Console.WriteLine(t.Name.ToString());
+            }
         }
         private static ConfigEntry<bool> ExtDrop;
         private static ConfigEntry<float> DropRateCharacter;
         private static ConfigEntry<float> DropRateSkillMantra;
         private static ConfigEntry<float> DropRateEquip;
+        static private void BindSubConfig()
+        {
+            DropRateCharacter = Plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, "人物加入道具掉落率");
+            DropRateSkillMantra = Plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, "招式和心法秘籍掉落率");
+            DropRateEquip = Plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, "装备掉落率");
+        }
 
         public void OnUpdate()
         {
