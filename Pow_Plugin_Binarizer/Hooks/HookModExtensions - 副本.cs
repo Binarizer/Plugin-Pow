@@ -73,23 +73,17 @@ namespace PathOfWuxia
             }
 
             // 测试导出
-            if (Input.GetKeyDown(KeyCode.M))
+            if (Input.GetKeyDown(KeyCode.T))
             {
                 string source = @"G:\Steam\steamapps\common\PathOfWuxia\Mods\JJJH\config\cinematic\m1101101_00_original.json";
                 string target = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\movie.json";
                 TestMovieConvert(source, target);
             }
-            if (Input.GetKeyDown(KeyCode.B))
-            {
-                string source = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\battleoriginal.json";
-                string target = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\battlejs.json";
-                TestBattleConvert(source, target);
-            }
         }
 
         static void TestMovieConvert(string source, string target)
         {
-            var settingImport = new JsonSerializerSettings
+            var settringImport = new JsonSerializerSettings
             {
                 Converters = new JsonConverter[]
                 {
@@ -98,20 +92,10 @@ namespace PathOfWuxia
             };
             string original = File.ReadAllText(source);
             Console.WriteLine(original);
-            ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(original, settingImport);
+            ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(original, settringImport);
             Console.WriteLine("bundle="+bundle);
 
             DumpMovie(bundle, target);
-        }
-
-        static void TestBattleConvert(string source, string target)
-        {
-            string original = File.ReadAllText(source);
-            Console.WriteLine(original);
-            BattleRootNode node = OutputNodeConvert.Deserialize(original) as BattleRootNode;
-            Console.WriteLine("node=" + node);
-
-            DumpOutputNode(node, target);
         }
 
         static List<BattleDropProp> ExtDrops = new List<BattleDropProp>();
@@ -623,9 +607,9 @@ namespace PathOfWuxia
             }
         }
 
-        // 9 各种脚本文件dump，支持Json格式剧情和战斗
+        // 9 各种脚本文件dump，支持Json格式战斗
         [HarmonyPostfix, HarmonyPatch(typeof(SchedulerComponent), "GetScheduleGraph", new Type[] { typeof(string) })]
-        public static void DumpPatch_Movie1(string path)
+        public static void Dump_Movie1(string path)
         {
             if (!string.IsNullOrEmpty(path))
             {
@@ -633,7 +617,7 @@ namespace PathOfWuxia
             }
         }
         [HarmonyPostfix, HarmonyPatch(typeof(ScheduleGraph), MethodType.Constructor, new Type[] { typeof(string) })]
-        public static void DumpPatch_Movie2(ref ScheduleGraph __instance, string jsonString)
+        public static void Dump_Movie2(ref ScheduleGraph __instance, string jsonString)
         {
             ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(jsonString, new JsonConverter[]
             {
@@ -641,19 +625,9 @@ namespace PathOfWuxia
             });
             LastMovieBundle = bundle;
         }
-        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeJsonConverter), "ReadJson", new Type[] { typeof(JsonReader), typeof(Type), typeof(object), typeof(JsonSerializer) })]
-        public static bool DumpPatch_MovieLoadJson(ref OutputNodeJsonConverter __instance, ref object __result, JsonReader reader, JsonSerializer serializer)
-        {
-            // 增加json加载
-            if (reader.TokenType == JsonToken.String)
-                __result = OutputNodeConvert.Deserialize(reader.Value.ToString());
-            else
-                __result = JsonSerializer.Create(OutputNodeBinder.importSetting).Deserialize(reader);
-            return false;
-        }
 
         [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeConvert), "Deserialize", new Type[] { typeof(string) })]
-        public static bool DumpPatch_JsonConvert(string str, ref OutputNode __result)
+        public static bool Dump_JsonConvert(string str, ref OutputNode __result)
         {
             if (str.StartsWith("[JSON", StringComparison.CurrentCultureIgnoreCase))
             {
@@ -685,16 +659,34 @@ namespace PathOfWuxia
 
         static OutputNode ParseOutputNode(string content)
         {
-            Console.WriteLine("通过json读取OutputNode");
-            return JsonConvert.DeserializeObject(content, OutputNodeBinder.importSetting) as OutputNode;
+            var importSetting = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate,
+                TypeNameHandling = TypeNameHandling.Objects,
+                Binder = new OutputNodeBinder()
+            };
+            return JsonConvert.DeserializeObject(content, importSetting) as OutputNode;
         }
 
         public static void DumpOutputNode(OutputNode node, string path = null)
         {
             Console.WriteLine("导出Json格式 nodeType = " + node.GetType());
-            string jsonStr = JsonConvert.SerializeObject(node, typeof(OutputNode), Formatting.Indented, OutputNodeBinder.exportSetting);
+            var setting = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate,
+                TypeNameHandling = TypeNameHandling.Objects,
+                Binder = new OutputNodeBinder()
+            };
+            string jsonStr = JsonConvert.SerializeObject(node, Formatting.Indented, setting);
             //Console.WriteLine("未简化的Json = " + jsonStr);
-            jsonStr = OutputNodeBinder.SimplifyTypeName(jsonStr);
+            foreach(string name in GlobalLib.GetOutputNodeAssemblies())
+            {
+                jsonStr = jsonStr.Replace(string.Format(", {0}", name), "");
+            }
+            foreach (string name in GlobalLib.GetOutputNodeNameSpaces())
+            {
+                jsonStr = jsonStr.Replace(string.Format("{0}.", name), "");
+            }
             Console.WriteLine(jsonStr);
             if (!string.IsNullOrEmpty(path))
             {
@@ -706,22 +698,35 @@ namespace PathOfWuxia
             }
 
             // 对比重新通过Json构建的是否有差
-            OutputNode node2 = ParseOutputNode(jsonStr);
+            OutputNode node2 = JsonConvert.DeserializeObject(jsonStr, setting) as OutputNode;
             string str2 = OutputNodeConvert.Serialize(node2);
             Console.WriteLine("重构建的原版脚本 = " + str2);
-        }
-
-        static ScheduleGraph.Bundle ParseMovie(string content)
-        {
-            Console.WriteLine("通过json读取Movie文件");
-            return JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(content, OutputNodeBinder.importSetting);
         }
 
         public static void DumpMovie(ScheduleGraph.Bundle node, string path = null)
         {
             Console.WriteLine("导出Json格式 nodeType = " + node.GetType());
-            string jsonStr = JsonConvert.SerializeObject(node, Formatting.Indented, OutputNodeBinder.exportSetting);
-            jsonStr = OutputNodeBinder.SimplifyTypeName(jsonStr);
+            var settingExport = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.Ignore,
+                TypeNameHandling = TypeNameHandling.Auto,
+                Converters = new JsonConverter[]
+                {
+                    new Vector3Converter()
+                    //new ModOutputNodeJsonConverter()
+                }
+            };
+            string jsonStr = JsonConvert.SerializeObject(node, settingExport);
+            object o = JsonConvert.DeserializeObject(jsonStr);
+            var settingFormat = new JsonSerializerSettings
+            {
+                Converters = new JsonConverter[]
+                {
+                    new OutputNodeTypeConverter()
+                }
+            };
+            jsonStr = JsonConvert.SerializeObject(o, Formatting.Indented, settingFormat);
+
             Console.WriteLine(jsonStr);
             if (!string.IsNullOrEmpty(path))
             {
@@ -732,8 +737,17 @@ namespace PathOfWuxia
                 sr.Close();
             }
 
-            // 测试读取并对比重新通过Json构建的是否有差
-            //var movie = ParseMovie(jsonStr);
+            var settingImport = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.Populate,
+                TypeNameHandling = TypeNameHandling.Objects,
+                Binder = new OutputNodeBinder(),
+                Converters = new JsonConverter[]
+                {
+                    //new ModOutputNodeJsonConverter()
+                }
+            };
+            var node2 = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(jsonStr, settingImport);
             var settingOriginal = new JsonSerializerSettings
             {
                 Converters = new JsonConverter[]
@@ -741,8 +755,7 @@ namespace PathOfWuxia
                     new OutputNodeJsonConverter()
                 }
             };
-            var movie = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(jsonStr, settingOriginal);
-            string str2 = JsonConvert.SerializeObject(movie, Formatting.Indented, settingOriginal);
+            string str2 = JsonConvert.SerializeObject(node, Formatting.Indented, settingOriginal);
             Console.WriteLine("重构建的原版脚本 = " + str2);
         }
 

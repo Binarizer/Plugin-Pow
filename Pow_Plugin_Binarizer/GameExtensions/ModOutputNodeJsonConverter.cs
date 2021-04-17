@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using Heluo.Data;
 using Heluo.Data.Converter;
 using Heluo.Flow;
 using Newtonsoft.Json;
@@ -71,42 +72,69 @@ namespace PathOfWuxia
             writer.WriteRawValue(JsonUtility.ToJson(value, false));
         }
     }
-    // 用于简化类型名
-    public class NodeTypeConverter : JsonConverter
+
+    // BattleEventTiming可视化
+    public class EnumToStringConverter : JsonConverter
     {
         public override bool CanConvert(Type objectType)
         {
-            return objectType == typeof(string);
+            return objectType.IsEnum;
         }
-        public override bool CanRead => false;
+
+        public override bool CanRead => true;
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            throw new NotImplementedException("Unnecessary because CanRead is false. The type will skip the converter.");
+            if (reader.Value is string s)
+            {
+                return Enum.Parse(objectType, s);
+            }
+            return reader.Value;
         }
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
-            string s = value as string;
-            if (writer.Path.EndsWith(".$type"))
-            {
-                // 删除Assembly
-                foreach (string name in GlobalLib.GetOutputNodeAssemblies())
-                {
-                    s = s.Replace(string.Format(", {0}", name), "");
-                }
-                // 删除Namespace
-                foreach (string name in GlobalLib.GetOutputNodeNameSpaces())
-                {
-                    s = s.Replace(string.Format("{0}.", name), "");
-                }
-            }
-            writer.WriteValue(s);
+            writer.WriteValue(Enum.GetName(value.GetType(), value));
         }
     }
 
     // 可以接受简化版的类型名
     public class OutputNodeBinder : SerializationBinder
     {
+        public static readonly JsonSerializerSettings exportSetting = new JsonSerializerSettings
+        {
+            DefaultValueHandling = DefaultValueHandling.Ignore,
+            NullValueHandling = NullValueHandling.Ignore,
+            TypeNameHandling = TypeNameHandling.Auto,
+            Converters = new JsonConverter[]
+            {
+                new Vector3Converter(),
+                new EnumToStringConverter()
+            }
+        };
+        public static readonly JsonSerializerSettings importSetting = new JsonSerializerSettings
+        {
+            DefaultValueHandling = DefaultValueHandling.Populate,
+            TypeNameHandling = TypeNameHandling.Auto,
+            Binder = new OutputNodeBinder(),
+            Converters = new JsonConverter[]
+            {
+                new EnumToStringConverter()
+            }
+        };
+        public static string SimplifyTypeName(string jsonStr)
+        {
+            // 删除Assembly
+            foreach (string name in GlobalLib.GetOutputNodeAssemblies())
+            {
+                jsonStr = jsonStr.Replace(string.Format(", {0}", name), "");
+            }
+            // 删除Namespace
+            foreach (string name in GlobalLib.GetOutputNodeNameSpaces())
+            {
+                jsonStr = jsonStr.Replace(string.Format("{0}.", name), "");
+            }
+            return jsonStr;
+        }
         public override Type BindToType(string assemblyName, string typeName)
         {
             return GlobalLib.GetGameOutputNodeTypes().Find((Type item) => item.Name == typeName)
