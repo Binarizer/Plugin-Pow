@@ -1,6 +1,5 @@
 ﻿// 药品存档解析类
 using System;
-using System.Collections.Generic;
 using MessagePack;
 using MessagePack.Formatters;
 using Heluo.Data;
@@ -13,15 +12,13 @@ namespace PathOfWuxia
 
         public PropsEffect Create( string[] from )
         {
-            PropsEffectType type;
             string typestr = from[0].Trim();
-            if (Enum.TryParse(typestr, out type))
+            if (Enum.TryParse(typestr, out PropsEffectType type))
             {
                 return factory.Create(type, from) as PropsEffect;
             }
 
-            PropsEffectType_Ext typeEx;
-            if (Enum.TryParse(typestr, out typeEx))
+            if (Enum.TryParse(typestr, out PropsEffectType_Ext typeEx))
             {
                 switch (typeEx)
                 {

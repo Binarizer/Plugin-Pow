@@ -1,7 +1,6 @@
 ﻿using System;
+using System.Text;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 using BepInEx;
@@ -12,12 +11,16 @@ using Heluo.Data;
 using Heluo.Data.Converter;
 using Heluo.Flow;
 using Heluo.Battle;
+using Heluo.Flow.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
+using Newtonsoft.Json;
+using System.IO;
+using Heluo.Features;
 
 namespace PathOfWuxia
 {
-    // Mod扩展
+    // Mod辅助扩展
     public class HookModExtensions : IHook
     {
         static private BaseUnityPlugin Plugin = null;
@@ -26,49 +29,91 @@ namespace PathOfWuxia
         {
             Plugin = plugin;
             ExtDrop = plugin.Config.Bind("扩展功能", "战场掉落", false, "特定关卡敌方掉落，游玩剑击江湖请勾选");
-            if (ExtDrop.Value)
-            {
-                BindSubConfig();
-            }
-            ExtDrop.SettingChanged += (o, e) =>
-            {
-                if (ExtDrop.Value)
-                {
-                    BindSubConfig();
-                }
-                else
-                {
-                    plugin.Config.Remove(DropRateCharacter.Definition);
-                    plugin.Config.Remove(DropRateSkillMantra.Definition);
-                    plugin.Config.Remove(DropRateEquip.Definition);
-                }
-            };
+            var adv = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true });
+            DropRateCharacter = Plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, adv);
+            DropRateSkillMantra = Plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, adv);
+            DropRateEquip = Plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, adv);
 
-            // 添加扩展OutputNode
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            modActionTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(OutputNode)) select t).ToList();
-            Console.WriteLine("Mod添加OutputNode:");
-            foreach (var t in modActionTypes)
-            {
-                Console.WriteLine(t.Name.ToString());
-            }
+            DumpBattleFileKey = plugin.Config.Bind("Debug功能", "Dump战场文件", KeyCode.F10, adv);
+            DumpBattleFileName = plugin.Config.Bind("Debug功能", "战场文件路径", "Dump/battlejs_{0}.json", adv);
+            DumpMovieFileKey = plugin.Config.Bind("Debug功能", "Dump过场文件", KeyCode.F9, adv);
+            DumpMovieFileName = plugin.Config.Bind("Debug功能", "过场文件路径", "Dump/moviejs_{0}.json", adv);
         }
         private static ConfigEntry<bool> ExtDrop;
         private static ConfigEntry<float> DropRateCharacter;
         private static ConfigEntry<float> DropRateSkillMantra;
         private static ConfigEntry<float> DropRateEquip;
+
+        private static ConfigEntry<KeyCode> DumpBattleFileKey;
+        private static ConfigEntry<string> DumpBattleFileName;
+        private static ConfigEntry<KeyCode> DumpMovieFileKey;
+        private static ConfigEntry<string> DumpMovieFileName;
+        private static string LastMoviePath = null;
+        private static ScheduleGraph.Bundle LastMovieBundle = null;
+
         static private void BindSubConfig()
         {
-            DropRateCharacter = Plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, "人物加入道具掉落率");
-            DropRateSkillMantra = Plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, "招式和心法秘籍掉落率");
-            DropRateEquip = Plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, "装备掉落率");
         }
 
         public void OnUpdate()
         {
+            if (Input.GetKeyDown(DumpMovieFileKey.Value) && LastMovieBundle != null)
+            {
+                string path = string.Format(DumpMovieFileName.Value, Path.GetFileNameWithoutExtension(LastMoviePath));
+                DumpMovie(LastMovieBundle, path);
+            }
+            if (Input.GetKeyDown(DumpBattleFileKey.Value) )
+            {
+                var battleRootNode = Game.BattleStateMachine?.BattleManager?.BattleSchedule?.BattleSchedule?.BattleSchedules?.Output;
+                if (battleRootNode != null && battleRootNode as BattleRootNode != null )
+                {
+                    string path = string.Format(DumpBattleFileName.Value, Game.GameData.BattleID);
+                    DumpOutputNode(battleRootNode as BattleRootNode, path);
+                }
+            }
+
+            // 测试导出
+            if (Input.GetKeyDown(KeyCode.T))
+            {
+                string source = @"G:\Steam\steamapps\common\PathOfWuxia\Mods\JJJH\config\cinematic\m1101101_00_original.json";
+                string target = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\movie.json";
+                TestMovieConvert(source, target);
+            }
+            if (Input.GetKeyDown(KeyCode.B))
+            {
+                string source = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\battleoriginal.json";
+                string target = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\battlejs.json";
+                TestBattleConvert(source, target);
+            }
         }
 
-        static List<Type> modActionTypes;
+        static void TestMovieConvert(string source, string target)
+        {
+            var settingImport = new JsonSerializerSettings
+            {
+                Converters = new JsonConverter[]
+                {
+                    new OutputNodeJsonConverter()
+                }
+            };
+            string original = File.ReadAllText(source);
+            Console.WriteLine(original);
+            ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(original, settingImport);
+            Console.WriteLine("bundle="+bundle);
+
+            DumpMovie(bundle, target);
+        }
+
+        static void TestBattleConvert(string source, string target)
+        {
+            string original = File.ReadAllText(source);
+            Console.WriteLine(original);
+            BattleRootNode node = OutputNodeConvert.Deserialize(original) as BattleRootNode;
+            Console.WriteLine("node=" + node);
+
+            DumpOutputNode(node, target);
+        }
+
         static List<BattleDropProp> ExtDrops = new List<BattleDropProp>();
 
         // 1 多重召唤
@@ -523,30 +568,7 @@ namespace PathOfWuxia
             return false;
         }
 
-        // 7 GameAction扩展
-        [HarmonyPostfix, HarmonyPatch(typeof(ActionListener), "GetTypeByText", new Type[] { typeof(string) })]
-        static void ModExt_AddActions(ActionListener __instance, string s, ref Type __result)
-        {
-            if (__result == null)
-            {
-                if (s.Length > 0)
-                {
-                    if (s[0] == '"')
-                    {
-                        s = s.Trim(new char[]{'"'});
-                    }
-                    Console.WriteLine("尝试解析扩展类型 = " + s);
-                    Type action = modActionTypes.Find((Type item) => item.Name == s);
-                    if (action != null)
-                    {
-                        Console.WriteLine("解析扩展类型成功 = " + s);
-                        __result = action;
-                    }
-                }
-            }
-        }
-
-        // 8 武器装备按武功筛选排序
+        // 7 武器装备按武功筛选排序
         [HarmonyPostfix, HarmonyPatch(typeof(Inventory), "CheckCanUse", new Type[] { typeof(string), typeof(string) })]
         public static void ModExt_PropsCanUse(Inventory __instance, ref bool __result, string id, string CharacterId)
         {
@@ -577,5 +599,183 @@ namespace PathOfWuxia
             SortInventory(inventoryWindowInfo);
             return true;
         }
+
+        // 8 GameAction扩展
+        [HarmonyPostfix, HarmonyPatch(typeof(ActionListener), "GetTypeByText", new Type[] { typeof(string) })]
+        static void ModExt_AddActions(ActionListener __instance, string s, ref Type __result)
+        {
+            if (__result == null)
+            {
+                if (s.Length > 0)
+                {
+                    if (s[0] == '"')
+                    {
+                        s = s.Trim(new char[]{'"'});
+                    }
+                    Console.WriteLine("尝试解析扩展类型 = " + s);
+                    Type action = GlobalLib.GetModOutputNodeTypes().Find((Type item) => item.Name == s);
+                    if (action != null)
+                    {
+                        Console.WriteLine("解析扩展类型成功 = " + s);
+                        __result = action;
+                    }
+                }
+            }
+        }
+
+        // 9 各种脚本文件dump，支持Json格式战斗
+        [HarmonyPostfix, HarmonyPatch(typeof(SchedulerComponent), "GetScheduleGraph", new Type[] { typeof(string) })]
+        public static void Dump_Movie1(string path)
+        {
+            if (!string.IsNullOrEmpty(path))
+            {
+                LastMoviePath = path;
+            }
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(ScheduleGraph), MethodType.Constructor, new Type[] { typeof(string) })]
+        public static void Dump_Movie2(ref ScheduleGraph __instance, string jsonString)
+        {
+            ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(jsonString, new JsonConverter[]
+            {
+                new OutputNodeJsonConverter()
+            });
+            LastMovieBundle = bundle;
+        }
+
+        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeConvert), "Deserialize", new Type[] { typeof(string) })]
+        public static bool Dump_JsonConvert(string str, ref OutputNode __result)
+        {
+            if (str.StartsWith("[JSON", StringComparison.CurrentCultureIgnoreCase))
+            {
+                try
+                {
+                    string content;
+                    if (str.StartsWith("[JSONFILE", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var array = Game.Resource.LoadBytes(str.Substring(10)); // remove [JSONFILE]
+                        content = Encoding.UTF8.GetString(array);
+                    }
+                    else
+                    {
+                        content = str.Substring(6); // remove [JSON]
+                    }
+                    Console.WriteLine("parse json: " + content);
+                    __result = ParseOutputNode(content);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    Debug.LogError("解析Json错误" + str);
+                    throw;
+                }
+                return false;
+            }
+            return true;
+        }
+
+        static OutputNode ParseOutputNode(string content)
+        {
+            Console.WriteLine("通过json读取OutputNode");
+            var importSetting = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.Populate,
+                TypeNameHandling = TypeNameHandling.Objects,
+                Binder = new OutputNodeBinder()
+            };
+            return JsonConvert.DeserializeObject(content, importSetting) as OutputNode;
+        }
+
+        public static void DumpOutputNode(OutputNode node, string path = null)
+        {
+            Console.WriteLine("导出Json格式 nodeType = " + node.GetType());
+            var exportSetting = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate,
+                TypeNameHandling = TypeNameHandling.Objects,
+                //Converters = new JsonConverter[]
+                //{
+                //    new Vector3Converter()
+                //}
+            };
+            string jsonStr = JsonConvert.SerializeObject(node, exportSetting);
+            jsonStr = FormatJson(jsonStr);
+            Console.WriteLine(jsonStr);
+            if (!string.IsNullOrEmpty(path))
+            {
+                Console.WriteLine("导出到文件 " + path);
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                var sr = File.CreateText(path);
+                sr.Write(jsonStr);
+                sr.Close();
+            }
+
+            // 测试读取并对比重新通过Json构建的是否有差
+            OutputNode node2 = ParseOutputNode(jsonStr);
+            string str2 = OutputNodeConvert.Serialize(node2);
+            Console.WriteLine("重构建的原版脚本 = " + str2);
+        }
+
+        static ScheduleGraph.Bundle ParseMovie(string content)
+        {
+            Console.WriteLine("通过json读取Movie文件");
+            var settingImport = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.Populate,
+                TypeNameHandling = TypeNameHandling.Objects,
+                Binder = new OutputNodeBinder()
+            };
+            return JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(content, settingImport);
+        }
+
+        public static void DumpMovie(ScheduleGraph.Bundle node, string path = null)
+        {
+            Console.WriteLine("导出Json格式 nodeType = " + node.GetType());
+            var settingExport = new JsonSerializerSettings
+            {
+                DefaultValueHandling = DefaultValueHandling.Ignore,
+                TypeNameHandling = TypeNameHandling.Auto,
+                Converters = new JsonConverter[]
+                {
+                    new Vector3Converter()
+                }
+            };
+            string jsonStr = JsonConvert.SerializeObject(node, settingExport);
+            jsonStr = FormatJson(jsonStr);
+            Console.WriteLine(jsonStr);
+            if (!string.IsNullOrEmpty(path))
+            {
+                Console.WriteLine("导出到文件 " + path);
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                var sr = File.CreateText(path);
+                sr.Write(jsonStr);
+                sr.Close();
+            }
+
+            // 测试读取并对比重新通过Json构建的是否有差
+            var movie = ParseMovie(jsonStr);
+            var settingOriginal = new JsonSerializerSettings
+            {
+                Converters = new JsonConverter[]
+                {
+                    new OutputNodeJsonConverter()
+                }
+            };
+            string str2 = JsonConvert.SerializeObject(movie, Formatting.Indented, settingOriginal);
+            Console.WriteLine("重构建的原版脚本 = " + str2);
+        }
+
+        static string FormatJson(string jsonStr)
+        {
+            object o = JsonConvert.DeserializeObject(jsonStr);
+            var settingFormat = new JsonSerializerSettings
+            {
+                Converters = new JsonConverter[]
+                {
+                    new NodeTypeConverter()
+                }
+            };
+            return JsonConvert.SerializeObject(o, Formatting.Indented, settingFormat);
+        }
+
     }
 }
