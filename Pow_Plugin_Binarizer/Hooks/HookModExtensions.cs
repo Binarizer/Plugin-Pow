@@ -11,12 +11,11 @@ using Heluo.Data;
 using Heluo.Data.Converter;
 using Heluo.Flow;
 using Heluo.Battle;
-using Heluo.Flow.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
 using Newtonsoft.Json;
-using System.IO;
-using Heluo.Features;
+using FileHelpers;
+using Heluo.FSM.Main;
 
 namespace PathOfWuxia
 {
@@ -34,22 +33,39 @@ namespace PathOfWuxia
             DropRateSkillMantra = Plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, adv);
             DropRateEquip = Plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, adv);
 
-            DumpBattleFileKey = plugin.Config.Bind("Debug功能", "Dump战场文件", KeyCode.F10, adv);
-            DumpBattleFileName = plugin.Config.Bind("Debug功能", "战场文件路径", "Dump/battlejs_{0}.json", adv);
-            DumpMovieFileKey = plugin.Config.Bind("Debug功能", "Dump过场文件", KeyCode.F9, adv);
-            DumpMovieFileName = plugin.Config.Bind("Debug功能", "过场文件路径", "Dump/moviejs_{0}.json", adv);
+            DumpPrittyPrinting = plugin.Config.Bind("Debug功能", "是否格式化", true, adv);
+            DumpBattleFileId = plugin.Config.Bind("Debug功能", "战斗文件Id", "", adv);
+            DumpBattleFileKey = plugin.Config.Bind("Debug功能", "战斗文件保存键", KeyCode.B, adv);
+            DumpBattleFilePath = plugin.Config.Bind("Debug功能", "战斗文件保存路径", "Dump/battle/{0}.json", adv);
+            DumpBuffFileId = plugin.Config.Bind("Debug功能", "Buff文件Id", "", adv);
+            DumpBuffFileKey = plugin.Config.Bind("Debug功能", "Buff文件保存键", KeyCode.N, adv);
+            DumpBuffFilePath = plugin.Config.Bind("Debug功能", "Buff文件保存路径", "Dump/buff/{0}.json", adv);
+            DumpMovieType = plugin.Config.Bind("Debug功能", "过场文件类型", MovieType.Cinematic, adv);
+            DumpMovieFileId = plugin.Config.Bind("Debug功能", "过场文件Id", "", adv);
+            DumpMovieFileKey = plugin.Config.Bind("Debug功能", "过场文件保存键", KeyCode.M, adv);
+            DumpMovieFilePath = plugin.Config.Bind("Debug功能", "过场文件保存路径", "Dump/movie/{0}.json", adv);
         }
         private static ConfigEntry<bool> ExtDrop;
         private static ConfigEntry<float> DropRateCharacter;
         private static ConfigEntry<float> DropRateSkillMantra;
         private static ConfigEntry<float> DropRateEquip;
 
+        enum MovieType
+        {
+            Cinematic,
+            Scheduler
+        }
+        private static ConfigEntry<bool> DumpPrittyPrinting;
+        private static ConfigEntry<string> DumpBattleFileId;
         private static ConfigEntry<KeyCode> DumpBattleFileKey;
-        private static ConfigEntry<string> DumpBattleFileName;
+        private static ConfigEntry<string> DumpBattleFilePath;
+        private static ConfigEntry<string> DumpBuffFileId;
+        private static ConfigEntry<KeyCode> DumpBuffFileKey;
+        private static ConfigEntry<string> DumpBuffFilePath;
+        private static ConfigEntry<MovieType> DumpMovieType;
+        private static ConfigEntry<string> DumpMovieFileId;
         private static ConfigEntry<KeyCode> DumpMovieFileKey;
-        private static ConfigEntry<string> DumpMovieFileName;
-        private static string LastMoviePath = null;
-        private static ScheduleGraph.Bundle LastMovieBundle = null;
+        private static ConfigEntry<string> DumpMovieFilePath;
 
         static private void BindSubConfig()
         {
@@ -57,61 +73,62 @@ namespace PathOfWuxia
 
         public void OnUpdate()
         {
-            if (Input.GetKeyDown(DumpMovieFileKey.Value) && LastMovieBundle != null)
+            if (Input.GetKeyDown(DumpMovieFileKey.Value) && !string.IsNullOrEmpty(DumpMovieFileId.Value))
             {
-                string path = string.Format(DumpMovieFileName.Value, Path.GetFileNameWithoutExtension(LastMoviePath));
-                DumpMovie(LastMovieBundle, path);
-            }
-            if (Input.GetKeyDown(DumpBattleFileKey.Value) )
-            {
-                var battleRootNode = Game.BattleStateMachine?.BattleManager?.BattleSchedule?.BattleSchedule?.BattleSchedules?.Output;
-                if (battleRootNode != null && battleRootNode as BattleRootNode != null )
+                // movie                
+                string original = Game.Resource.LoadString(string.Format(DumpMovieType.Value == MovieType.Cinematic?GameConfig.CinematicPath:GameConfig.SchedulerPath, DumpMovieFileId.Value));
+                string target = string.Format(DumpMovieFilePath.Value, DumpMovieFileId.Value);
+                // 官方读取设定
+                JsonSerializerSettings originalSetting = new JsonSerializerSettings
                 {
-                    string path = string.Format(DumpBattleFileName.Value, Game.GameData.BattleID);
-                    DumpOutputNode(battleRootNode as BattleRootNode, path);
-                }
+                    Converters = new JsonConverter[]
+                    {
+                        new OutputNodeJsonConverter()
+                    }
+                };
+                var obj = ModJson.FromJson<ScheduleGraph.Bundle>(original, originalSetting);
+                Console.WriteLine("obj.Type =" + obj?.GetType());
+                var strJsonMod = ModJson.ToJsonMod(obj, typeof(ScheduleGraph.Bundle), target, true);
+                Console.WriteLine("Json版 = " + strJsonMod);
+
+                // 测试读取并对比重新通过Json构建的是否有差
+                var obj2 = ModJson.FromJson<ScheduleGraph.Bundle>(strJsonMod, originalSetting);   // 这里由于不好改constructor, 就把原版读取兼容了json模式
+                string str2 = ModJson.ToJson(obj2, typeof(ScheduleGraph.Bundle), originalSetting, true);
+                Console.WriteLine("原始脚本 = " + original);
+                Console.WriteLine("重构脚本 = " + str2);
             }
-
-            // 测试导出
-            if (Input.GetKeyDown(KeyCode.M))
+            if (Input.GetKeyDown(DumpBattleFileKey.Value) && !string.IsNullOrEmpty(DumpBattleFileId.Value))
             {
-                string source = @"G:\Steam\steamapps\common\PathOfWuxia\Mods\JJJH\config\cinematic\m1101101_00_original.json";
-                string target = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\movie.json";
-                TestMovieConvert(source, target);
+                // battle schedule
+                string source = Game.Resource.LoadString(string.Format(GameConfig.BattleSchedulePath, GameConfig.Language, DumpBattleFileId.Value + ".json"));
+                BattleSchedule dataObj = new FileHelperEngine<BattleSchedule>(Encoding.UTF8).ReadString(source)[0];
+                var obj = dataObj.BattleSchedules.Output;
+                string target = string.Format(DumpBattleFilePath.Value, DumpBattleFileId.Value);
+                Console.WriteLine("obj.Type =" + obj.GetType());
+                var strJsonMod = ModJson.ToJsonMod(obj, typeof(OutputNode), target, true);
+                Console.WriteLine("Json版 = " + strJsonMod);
+
+                // 对比重新通过Json构建的是否有差
+                var obj2 = ModJson.FromJsonMod<OutputNode>(strJsonMod);
+                string str2 = OutputNodeConvert.Serialize(obj2);
+                Console.WriteLine("重构脚本 = " + str2);
             }
-            if (Input.GetKeyDown(KeyCode.B))
+            if (Input.GetKeyDown(DumpBuffFileKey.Value) && !string.IsNullOrEmpty(DumpBuffFileId.Value))
             {
-                string source = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\battleoriginal.json";
-                string target = @"G:\Steam\steamapps\common\PathOfWuxia\Dump\battlejs.json";
-                TestBattleConvert(source, target);
+                // buff
+                string source = Game.Resource.LoadString(string.Format(GameConfig.ButtleBufferPath, GameConfig.Language, DumpBuffFileId.Value + ".json"));
+                Heluo.Data.Buffer dataObj = new FileHelperEngine<Heluo.Data.Buffer>(Encoding.UTF8).ReadString(source)[0];
+                var obj = dataObj.BufferEffect.Output;
+                string target = string.Format(DumpBuffFilePath.Value, DumpBuffFileId.Value);
+                Console.WriteLine("obj.Type =" + obj.GetType());
+                var strJsonMod = ModJson.ToJsonMod(obj, typeof(OutputNode), target, true);
+                Console.WriteLine("Json版 = " + strJsonMod);
+
+                // 对比重新通过Json构建的是否有差
+                var obj2 = ModJson.FromJsonMod<OutputNode>(strJsonMod);
+                string str2 = OutputNodeConvert.Serialize(obj2);
+                Console.WriteLine("重构脚本 = " + str2);
             }
-        }
-
-        static void TestMovieConvert(string source, string target)
-        {
-            var settingImport = new JsonSerializerSettings
-            {
-                Converters = new JsonConverter[]
-                {
-                    new OutputNodeJsonConverter()
-                }
-            };
-            string original = File.ReadAllText(source);
-            Console.WriteLine(original);
-            ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(original, settingImport);
-            Console.WriteLine("bundle="+bundle);
-
-            DumpMovie(bundle, target);
-        }
-
-        static void TestBattleConvert(string source, string target)
-        {
-            string original = File.ReadAllText(source);
-            Console.WriteLine(original);
-            BattleRootNode node = OutputNodeConvert.Deserialize(original) as BattleRootNode;
-            Console.WriteLine("node=" + node);
-
-            DumpOutputNode(node, target);
         }
 
         static List<BattleDropProp> ExtDrops = new List<BattleDropProp>();
@@ -624,31 +641,29 @@ namespace PathOfWuxia
         }
 
         // 9 各种脚本文件dump，支持Json格式剧情和战斗
-        [HarmonyPostfix, HarmonyPatch(typeof(SchedulerComponent), "GetScheduleGraph", new Type[] { typeof(string) })]
-        public static void DumpPatch_Movie1(string path)
+        [HarmonyPostfix, HarmonyPatch(typeof(CinematicEventArgs), "CinematicId", MethodType.Getter)]
+        public static void DumpPatch_MovieId(CinematicEventArgs __instance)
         {
-            if (!string.IsNullOrEmpty(path))
-            {
-                LastMoviePath = path;
-            }
+            DumpMovieType.Value = MovieType.Cinematic;
+            DumpMovieFileId.Value = __instance.CinematicId;
         }
-        [HarmonyPostfix, HarmonyPatch(typeof(ScheduleGraph), MethodType.Constructor, new Type[] { typeof(string) })]
-        public static void DumpPatch_Movie2(ref ScheduleGraph __instance, string jsonString)
+        [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleSchedule), "InitBattleScheduleData", new Type[] { typeof(string) })]
+        public static void DumpPatch_BattleId(string ScheduleID)
         {
-            ScheduleGraph.Bundle bundle = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(jsonString, new JsonConverter[]
-            {
-                new OutputNodeJsonConverter()
-            });
-            LastMovieBundle = bundle;
+            DumpBattleFileId.Value = ScheduleID;
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleBuffer), "AddBuffer", new Type[] { typeof(WuxiaUnit), typeof(string), typeof(bool), typeof(bool) })]
+        public static void DumpPatch_BuffId(string bufferId)
+        {
+            DumpBuffFileId.Value = bufferId;
         }
         [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeJsonConverter), "ReadJson", new Type[] { typeof(JsonReader), typeof(Type), typeof(object), typeof(JsonSerializer) })]
-        public static bool DumpPatch_MovieLoadJson(ref OutputNodeJsonConverter __instance, ref object __result, JsonReader reader, JsonSerializer serializer)
+        public static bool DumpPatch_MovieLoadJson(ref object __result, JsonReader reader)
         {
-            // 增加json加载
             if (reader.TokenType == JsonToken.String)
                 __result = OutputNodeConvert.Deserialize(reader.Value.ToString());
-            else
-                __result = JsonSerializer.Create(OutputNodeBinder.importSetting).Deserialize(reader);
+            else    // 增加json加载
+                __result = ModJson.FromReaderMod<OutputNode>(reader);
             return false;
         }
 
@@ -670,7 +685,7 @@ namespace PathOfWuxia
                         content = str.Substring(6); // remove [JSON]
                     }
                     Console.WriteLine("parse json: " + content);
-                    __result = ParseOutputNode(content);
+                    __result = ModJson.FromJsonMod<OutputNode>(content);
                 }
                 catch (Exception e)
                 {
@@ -683,68 +698,6 @@ namespace PathOfWuxia
             return true;
         }
 
-        static OutputNode ParseOutputNode(string content)
-        {
-            Console.WriteLine("通过json读取OutputNode");
-            return JsonConvert.DeserializeObject(content, OutputNodeBinder.importSetting) as OutputNode;
-        }
-
-        public static void DumpOutputNode(OutputNode node, string path = null)
-        {
-            Console.WriteLine("导出Json格式 nodeType = " + node.GetType());
-            string jsonStr = JsonConvert.SerializeObject(node, typeof(OutputNode), Formatting.Indented, OutputNodeBinder.exportSetting);
-            //Console.WriteLine("未简化的Json = " + jsonStr);
-            jsonStr = OutputNodeBinder.SimplifyTypeName(jsonStr);
-            Console.WriteLine(jsonStr);
-            if (!string.IsNullOrEmpty(path))
-            {
-                Console.WriteLine("导出到文件 " + path);
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                var sr = File.CreateText(path);
-                sr.Write(jsonStr);
-                sr.Close();
-            }
-
-            // 对比重新通过Json构建的是否有差
-            OutputNode node2 = ParseOutputNode(jsonStr);
-            string str2 = OutputNodeConvert.Serialize(node2);
-            Console.WriteLine("重构建的原版脚本 = " + str2);
-        }
-
-        static ScheduleGraph.Bundle ParseMovie(string content)
-        {
-            Console.WriteLine("通过json读取Movie文件");
-            return JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(content, OutputNodeBinder.importSetting);
-        }
-
-        public static void DumpMovie(ScheduleGraph.Bundle node, string path = null)
-        {
-            Console.WriteLine("导出Json格式 nodeType = " + node.GetType());
-            string jsonStr = JsonConvert.SerializeObject(node, Formatting.Indented, OutputNodeBinder.exportSetting);
-            jsonStr = OutputNodeBinder.SimplifyTypeName(jsonStr);
-            Console.WriteLine(jsonStr);
-            if (!string.IsNullOrEmpty(path))
-            {
-                Console.WriteLine("导出到文件 " + path);
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                var sr = File.CreateText(path);
-                sr.Write(jsonStr);
-                sr.Close();
-            }
-
-            // 测试读取并对比重新通过Json构建的是否有差
-            //var movie = ParseMovie(jsonStr);
-            var settingOriginal = new JsonSerializerSettings
-            {
-                Converters = new JsonConverter[]
-                {
-                    new OutputNodeJsonConverter()
-                }
-            };
-            var movie = JsonConvert.DeserializeObject<ScheduleGraph.Bundle>(jsonStr, settingOriginal);
-            string str2 = JsonConvert.SerializeObject(movie, Formatting.Indented, settingOriginal);
-            Console.WriteLine("重构建的原版脚本 = " + str2);
-        }
 
     }
 }
