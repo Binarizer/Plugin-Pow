@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -13,9 +12,6 @@ using Heluo.Flow;
 using Heluo.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
-using Newtonsoft.Json;
-using FileHelpers;
-using Heluo.FSM.Main;
 
 namespace PathOfWuxia
 {
@@ -32,40 +28,11 @@ namespace PathOfWuxia
             DropRateCharacter = Plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, adv);
             DropRateSkillMantra = Plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, adv);
             DropRateEquip = Plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, adv);
-
-            DumpPrittyPrinting = plugin.Config.Bind("Debug功能", "是否格式化", true, adv);
-            DumpBattleFileId = plugin.Config.Bind("Debug功能", "战斗文件Id", "", adv);
-            DumpBattleFileKey = plugin.Config.Bind("Debug功能", "战斗文件保存键", KeyCode.B, adv);
-            DumpBattleFilePath = plugin.Config.Bind("Debug功能", "战斗文件保存路径", "Dump/battle/{0}.json", adv);
-            DumpBuffFileId = plugin.Config.Bind("Debug功能", "Buff文件Id", "", adv);
-            DumpBuffFileKey = plugin.Config.Bind("Debug功能", "Buff文件保存键", KeyCode.N, adv);
-            DumpBuffFilePath = plugin.Config.Bind("Debug功能", "Buff文件保存路径", "Dump/buff/{0}.json", adv);
-            DumpMovieType = plugin.Config.Bind("Debug功能", "过场文件类型", MovieType.Cinematic, adv);
-            DumpMovieFileId = plugin.Config.Bind("Debug功能", "过场文件Id", "", adv);
-            DumpMovieFileKey = plugin.Config.Bind("Debug功能", "过场文件保存键", KeyCode.M, adv);
-            DumpMovieFilePath = plugin.Config.Bind("Debug功能", "过场文件保存路径", "Dump/movie/{0}.json", adv);
         }
         private static ConfigEntry<bool> ExtDrop;
         private static ConfigEntry<float> DropRateCharacter;
         private static ConfigEntry<float> DropRateSkillMantra;
         private static ConfigEntry<float> DropRateEquip;
-
-        enum MovieType
-        {
-            Cinematic,
-            Scheduler
-        }
-        private static ConfigEntry<bool> DumpPrittyPrinting;
-        private static ConfigEntry<string> DumpBattleFileId;
-        private static ConfigEntry<KeyCode> DumpBattleFileKey;
-        private static ConfigEntry<string> DumpBattleFilePath;
-        private static ConfigEntry<string> DumpBuffFileId;
-        private static ConfigEntry<KeyCode> DumpBuffFileKey;
-        private static ConfigEntry<string> DumpBuffFilePath;
-        private static ConfigEntry<MovieType> DumpMovieType;
-        private static ConfigEntry<string> DumpMovieFileId;
-        private static ConfigEntry<KeyCode> DumpMovieFileKey;
-        private static ConfigEntry<string> DumpMovieFilePath;
 
         static private void BindSubConfig()
         {
@@ -73,62 +40,6 @@ namespace PathOfWuxia
 
         public void OnUpdate()
         {
-            if (Input.GetKeyDown(DumpMovieFileKey.Value) && !string.IsNullOrEmpty(DumpMovieFileId.Value))
-            {
-                // movie                
-                string original = Game.Resource.LoadString(string.Format(DumpMovieType.Value == MovieType.Cinematic?GameConfig.CinematicPath:GameConfig.SchedulerPath, DumpMovieFileId.Value));
-                string target = string.Format(DumpMovieFilePath.Value, DumpMovieFileId.Value);
-                // 官方读取设定
-                JsonSerializerSettings originalSetting = new JsonSerializerSettings
-                {
-                    Converters = new JsonConverter[]
-                    {
-                        new OutputNodeJsonConverter()
-                    }
-                };
-                var obj = ModJson.FromJson<ScheduleGraph.Bundle>(original, originalSetting);
-                Console.WriteLine("obj.Type =" + obj?.GetType());
-                var strJsonMod = ModJson.ToJsonMod(obj, typeof(ScheduleGraph.Bundle), target, true);
-                Console.WriteLine("Json版 = " + strJsonMod);
-
-                // 测试读取并对比重新通过Json构建的是否有差
-                var obj2 = ModJson.FromJson<ScheduleGraph.Bundle>(strJsonMod, originalSetting);   // 这里由于不好改constructor, 就把原版读取兼容了json模式
-                string str2 = ModJson.ToJson(obj2, typeof(ScheduleGraph.Bundle), originalSetting, true);
-                Console.WriteLine("原始脚本 = " + original);
-                Console.WriteLine("重构脚本 = " + str2);
-            }
-            if (Input.GetKeyDown(DumpBattleFileKey.Value) && !string.IsNullOrEmpty(DumpBattleFileId.Value))
-            {
-                // battle schedule
-                string source = Game.Resource.LoadString(string.Format(GameConfig.BattleSchedulePath, GameConfig.Language, DumpBattleFileId.Value + ".json"));
-                BattleSchedule dataObj = new FileHelperEngine<BattleSchedule>(Encoding.UTF8).ReadString(source)[0];
-                var obj = dataObj.BattleSchedules.Output;
-                string target = string.Format(DumpBattleFilePath.Value, DumpBattleFileId.Value);
-                Console.WriteLine("obj.Type =" + obj.GetType());
-                var strJsonMod = ModJson.ToJsonMod(obj, typeof(OutputNode), target, true);
-                Console.WriteLine("Json版 = " + strJsonMod);
-
-                // 对比重新通过Json构建的是否有差
-                var obj2 = ModJson.FromJsonMod<OutputNode>(strJsonMod);
-                string str2 = OutputNodeConvert.Serialize(obj2);
-                Console.WriteLine("重构脚本 = " + str2);
-            }
-            if (Input.GetKeyDown(DumpBuffFileKey.Value) && !string.IsNullOrEmpty(DumpBuffFileId.Value))
-            {
-                // buff
-                string source = Game.Resource.LoadString(string.Format(GameConfig.ButtleBufferPath, GameConfig.Language, DumpBuffFileId.Value + ".json"));
-                Heluo.Data.Buffer dataObj = new FileHelperEngine<Heluo.Data.Buffer>(Encoding.UTF8).ReadString(source)[0];
-                var obj = dataObj.BufferEffect.Output;
-                string target = string.Format(DumpBuffFilePath.Value, DumpBuffFileId.Value);
-                Console.WriteLine("obj.Type =" + obj.GetType());
-                var strJsonMod = ModJson.ToJsonMod(obj, typeof(OutputNode), target, true);
-                Console.WriteLine("Json版 = " + strJsonMod);
-
-                // 对比重新通过Json构建的是否有差
-                var obj2 = ModJson.FromJsonMod<OutputNode>(strJsonMod);
-                string str2 = OutputNodeConvert.Serialize(obj2);
-                Console.WriteLine("重构脚本 = " + str2);
-            }
         }
 
         static List<BattleDropProp> ExtDrops = new List<BattleDropProp>();
@@ -617,7 +528,7 @@ namespace PathOfWuxia
             return true;
         }
 
-        // 8 GameAction扩展
+        // 8 OutputNode扩展
         [HarmonyPostfix, HarmonyPatch(typeof(ActionListener), "GetTypeByText", new Type[] { typeof(string) })]
         static void ModExt_AddActions(ActionListener __instance, string s, ref Type __result)
         {
@@ -639,65 +550,5 @@ namespace PathOfWuxia
                 }
             }
         }
-
-        // 9 各种脚本文件dump，支持Json格式剧情和战斗
-        [HarmonyPostfix, HarmonyPatch(typeof(CinematicEventArgs), "CinematicId", MethodType.Getter)]
-        public static void DumpPatch_MovieId(CinematicEventArgs __instance)
-        {
-            DumpMovieType.Value = MovieType.Cinematic;
-            DumpMovieFileId.Value = __instance.CinematicId;
-        }
-        [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleSchedule), "InitBattleScheduleData", new Type[] { typeof(string) })]
-        public static void DumpPatch_BattleId(string ScheduleID)
-        {
-            DumpBattleFileId.Value = ScheduleID;
-        }
-        [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleBuffer), "AddBuffer", new Type[] { typeof(WuxiaUnit), typeof(string), typeof(bool), typeof(bool) })]
-        public static void DumpPatch_BuffId(string bufferId)
-        {
-            DumpBuffFileId.Value = bufferId;
-        }
-        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeJsonConverter), "ReadJson", new Type[] { typeof(JsonReader), typeof(Type), typeof(object), typeof(JsonSerializer) })]
-        public static bool DumpPatch_MovieLoadJson(ref object __result, JsonReader reader)
-        {
-            if (reader.TokenType == JsonToken.String)
-                __result = OutputNodeConvert.Deserialize(reader.Value.ToString());
-            else    // 增加json加载
-                __result = ModJson.FromReaderMod<OutputNode>(reader);
-            return false;
-        }
-
-        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeConvert), "Deserialize", new Type[] { typeof(string) })]
-        public static bool DumpPatch_JsonConvert(string str, ref OutputNode __result)
-        {
-            if (str.StartsWith("[JSON", StringComparison.CurrentCultureIgnoreCase))
-            {
-                try
-                {
-                    string content;
-                    if (str.StartsWith("[JSONFILE", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        var array = Game.Resource.LoadBytes(str.Substring(10)); // remove [JSONFILE]
-                        content = Encoding.UTF8.GetString(array);
-                    }
-                    else
-                    {
-                        content = str.Substring(6); // remove [JSON]
-                    }
-                    Console.WriteLine("parse json: " + content);
-                    __result = ModJson.FromJsonMod<OutputNode>(content);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                    Debug.LogError("解析Json错误" + str);
-                    throw;
-                }
-                return false;
-            }
-            return true;
-        }
-
-
     }
 }

@@ -27,6 +27,7 @@ namespace PathOfWuxia
             RegisterHook(new HookFeaturesAndFixes());
             RegisterHook(new HookMoreAccessories());
             RegisterHook(new HookModExtensions());
+            RegisterHook(new HookModDebug());
             RegisterHook(new HookUniqueItem());
             RegisterHook(new HookSkillExp());
             RegisterHook(new HookTeamManage());
