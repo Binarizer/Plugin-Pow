@@ -18,8 +18,8 @@ namespace PathOfWuxia
             dict = Traverse.Create(data).Field("dict").GetValue<IDictionary<Type, IDictionary>>();
         }
 
-        private DataManager data;                       // 原数据管理类
-        private IDictionary<Type, IDictionary> dict;    // 直接操作数据
+        private DataManager data;                               // 原数据管理类
+        private readonly IDictionary<Type, IDictionary> dict;    // 直接操作数据
 
         public void Reset(IResourceProvider resource, string path)
         {

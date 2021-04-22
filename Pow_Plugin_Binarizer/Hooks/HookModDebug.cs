@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -13,7 +12,6 @@ using Heluo.Flow;
 using Heluo.Battle;
 using Heluo.Utility;
 using Newtonsoft.Json;
-using FileHelpers;
 using Heluo.FSM.Main;
 using Heluo.UI;
 
@@ -25,19 +23,27 @@ namespace PathOfWuxia
         public void OnRegister(BaseUnityPlugin plugin)
         {
             var adv1 = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 3 });
-            DebugOn = plugin.Config.Bind("Debug功能", "总开关", false, adv1);
+            DebugOn = plugin.Config.Bind("Debug功能", "调试开关", false, adv1);
+            DebugOutDir = plugin.Config.Bind("Debug功能", "调试路径", "export/", adv1);
+
             var adv = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true });
-            PrittyPrinting = plugin.Config.Bind("Debug功能", "是否格式化", true, adv);
+            NodeContent = plugin.Config.Bind("Debug功能", "OutputNode内容(原始格式)", "", adv);
+            NodeFileKey = plugin.Config.Bind("Debug功能", "OutputNode输出(Json格式)", KeyCode.O, adv);
+            NodeFilePath = plugin.Config.Bind("Debug功能", "OutputNode输出路径", "OutputNode.json", adv);
+            JsonFormat = plugin.Config.Bind("Debug功能", "导出时使用json格式", true, adv);
+            JsonPritty = plugin.Config.Bind("Debug功能", "导出json是否格式化", true, adv);
             BattleFileId = plugin.Config.Bind("Debug功能", "战斗文件Id", "", adv);
             BattleFileKey = plugin.Config.Bind("Debug功能", "战斗文件保存键", KeyCode.B, adv);
-            BattleFilePath = plugin.Config.Bind("Debug功能", "战斗文件保存路径", "/battle/{0}.json", adv);
+            BattleFilePath = plugin.Config.Bind("Debug功能", "战斗文件保存路径", "battle/{0}.json", adv);
             BuffFileId = plugin.Config.Bind("Debug功能", "Buff文件Id", "", adv);
             BuffFileKey = plugin.Config.Bind("Debug功能", "Buff文件保存键", KeyCode.N, adv);
-            BuffFilePath = plugin.Config.Bind("Debug功能", "Buff文件保存路径", "/buff/{0}.json", adv);
+            BuffFilePath = plugin.Config.Bind("Debug功能", "Buff文件保存路径", "buff/{0}.json", adv);
             MovieFileType = plugin.Config.Bind("Debug功能", "过场文件类型", MovieType.Cinematic, adv);
             MovieFileId = plugin.Config.Bind("Debug功能", "过场文件Id", "", adv);
             MovieFileKey = plugin.Config.Bind("Debug功能", "过场文件保存键", KeyCode.M, adv);
-            MovieFilePath = plugin.Config.Bind("Debug功能", "过场文件保存路径", "/movie/{0}.json", adv);
+            MovieFilePath = plugin.Config.Bind("Debug功能", "过场文件保存路径", "movie/{0}.json", adv);
+            SortSchedule = plugin.Config.Bind("Debug功能", "过场是否重新排序", false, adv);
+            SortSchedule.SettingChanged += (o, e) => { ScheduleGraphConverter.WriteSorted = SortSchedule.Value; };
         }
 
         enum MovieType
@@ -46,7 +52,12 @@ namespace PathOfWuxia
             Scheduler
         }
         private static ConfigEntry<bool> DebugOn;
-        private static ConfigEntry<bool> PrittyPrinting;
+        private static ConfigEntry<string> DebugOutDir;
+        private static ConfigEntry<string> NodeContent;
+        private static ConfigEntry<KeyCode> NodeFileKey;
+        private static ConfigEntry<string> NodeFilePath;
+        private static ConfigEntry<bool> JsonFormat;
+        private static ConfigEntry<bool> JsonPritty;
         private static ConfigEntry<string> BattleFileId;
         private static ConfigEntry<KeyCode> BattleFileKey;
         private static ConfigEntry<string> BattleFilePath;
@@ -57,65 +68,84 @@ namespace PathOfWuxia
         private static ConfigEntry<string> MovieFileId;
         private static ConfigEntry<KeyCode> MovieFileKey;
         private static ConfigEntry<string> MovieFilePath;
+        private static ConfigEntry<bool> SortSchedule;
 
         public void OnUpdate()
         {
             if (!DebugOn.Value)
                 return;
+            if (Input.GetKeyDown(NodeFileKey.Value) && !string.IsNullOrEmpty(NodeContent.Value))
+            {
+                // OutputNode
+                string target = DebugOutDir.Value + NodeFilePath.Value;
+                OutputNode obj = OutputNodeConvert.Deserialize(NodeContent.Value);
+                var strJsonMod = ModJson.ToJsonMod(obj, typeof(OutputNode), JsonPritty.Value);
+                Console.WriteLine("Json版 = " + strJsonMod);
+                GlobalLib.ToFile(strJsonMod, target);
+            }
             if (Input.GetKeyDown(MovieFileKey.Value) && !string.IsNullOrEmpty(MovieFileId.Value))
             {
                 // movie                
-                string original = Game.Resource.LoadString(string.Format(MovieFileType.Value == MovieType.Cinematic?GameConfig.CinematicPath:GameConfig.SchedulerPath, MovieFileId.Value));
-                string target = string.Format(MovieFilePath.Value, MovieFileId.Value);
-                // 官方读取设定
-                JsonSerializerSettings originalSetting = new JsonSerializerSettings
+                string source = string.Format(MovieFileType.Value == MovieType.Cinematic?GameConfig.CinematicPath:GameConfig.SchedulerPath, MovieFileId.Value);
+                string target = string.Format(DebugOutDir.Value + MovieFilePath.Value, MovieFileId.Value);
+                var obj = ModJson.FromJsonResource<ScheduleGraph.Bundle>(source);
+                if (JsonFormat.Value)
                 {
-                    Converters = new JsonConverter[]
-                    {
-                        new OutputNodeJsonConverter()
-                    }
-                };
-                var obj = ModJson.FromJson<ScheduleGraph.Bundle>(original, originalSetting);
-                Console.WriteLine("obj.Type =" + obj?.GetType());
-                var strJsonMod = ModJson.ToJsonMod(obj, typeof(ScheduleGraph.Bundle), target, true);
-                Console.WriteLine("Json版 = " + strJsonMod);
+                    var strJsonMod = ModJson.ToJsonMod(obj, typeof(ScheduleGraph.Bundle), JsonPritty.Value);
+                    Console.WriteLine("Json版 = " + strJsonMod);
+                    GlobalLib.ToFile(strJsonMod, target);
 
-                // 测试读取并对比重新通过Json构建的是否有差
-                var obj2 = ModJson.FromJson<ScheduleGraph.Bundle>(strJsonMod, originalSetting);   // 这里由于不好改constructor, 就把原版读取兼容了json模式
-                string str2 = ModJson.ToJson(obj2, typeof(ScheduleGraph.Bundle), originalSetting, true);
-                Console.WriteLine("原始脚本 = " + original);
-                Console.WriteLine("重构脚本 = " + str2);
+                    // 测试读取并对比重新通过Json构建的是否有差
+                    var obj2 = ModJson.FromJsonMod<ScheduleGraph.Bundle>(strJsonMod);
+                    JsonSerializerSettings originalSetting = new JsonSerializerSettings
+                    {
+                        Converters = new JsonConverter[]
+                        {
+                        new OutputNodeJsonConverter()
+                        }
+                    };
+                    string str2 = ModJson.ToJson(obj2, typeof(ScheduleGraph.Bundle), originalSetting, JsonPritty.Value);
+                    Console.WriteLine("重构脚本 = " + str2);
+                }
+                else
+                {
+                    GlobalLib.ToFile(Game.Resource.LoadString(source), target);
+                }
             }
             if (Input.GetKeyDown(BattleFileKey.Value) && !string.IsNullOrEmpty(BattleFileId.Value))
             {
                 // battle schedule
-                string source = Game.Resource.LoadString(string.Format(GameConfig.BattleSchedulePath, GameConfig.Language, BattleFileId.Value + ".json"));
-                BattleSchedule dataObj = new FileHelperEngine<BattleSchedule>(Encoding.UTF8).ReadString(source)[0];
-                var obj = dataObj.BattleSchedules.Output;
-                string target = string.Format(BattleFilePath.Value, BattleFileId.Value);
-                ExportOutputNode(obj, target);
+                string source = string.Format(GameConfig.BattleSchedulePath, GameConfig.Language, BattleFileId.Value + ".json");
+                string target = string.Format(DebugOutDir.Value + BattleFilePath.Value, BattleFileId.Value);
+                if (JsonFormat.Value)
+                {
+                    BattleSchedule obj = ModJson.FromJsonResource<BattleSchedule>(source);
+                    var strJsonMod = ModJson.ToJsonMod(obj, typeof(BattleSchedule), JsonPritty.Value);
+                    Console.WriteLine("Json版 = " + strJsonMod);
+                    GlobalLib.ToFile(strJsonMod, target);
+                }
+                else
+                {
+                    GlobalLib.ToFile(Game.Resource.LoadString(source), target);
+                }
             }
             if (Input.GetKeyDown(BuffFileKey.Value) && !string.IsNullOrEmpty(BuffFileId.Value))
             {
                 // buff
-                string source = Game.Resource.LoadString(string.Format(GameConfig.ButtleBufferPath, GameConfig.Language, BuffFileId.Value + ".json"));
-                Heluo.Data.Buffer dataObj = new FileHelperEngine<Heluo.Data.Buffer>(Encoding.UTF8).ReadString(source)[0];
-                var obj = dataObj.BufferEffect.Output;
-                string target = string.Format(BuffFilePath.Value, BuffFileId.Value);
-                ExportOutputNode(obj, target);
+                string source = string.Format(GameConfig.ButtleBufferPath, GameConfig.Language, BuffFileId.Value + ".json");
+                string target = string.Format(DebugOutDir.Value + BuffFilePath.Value, BuffFileId.Value);
+                if (JsonFormat.Value)
+                {
+                    Heluo.Data.Buffer obj = ModJson.FromJsonResource<Heluo.Data.Buffer>(source);
+                    var strJsonMod = ModJson.ToJsonMod(obj, typeof(Heluo.Data.Buffer), true);
+                    Console.WriteLine("Json版 = " + strJsonMod);
+                    GlobalLib.ToFile(strJsonMod, target);
+                }
+                else
+                {
+                    GlobalLib.ToFile(Game.Resource.LoadString(source), target);
+                }
             }
-        }
-
-        void ExportOutputNode(IOutput obj, string target)
-        {
-            Console.WriteLine("obj.Type =" + obj.GetType());
-            var strJsonMod = ModJson.ToJsonMod(obj, typeof(OutputNode), target, true);
-            Console.WriteLine("Json版 = " + strJsonMod);
-
-            // 对比重新通过Json构建的是否有差
-            var obj2 = ModJson.FromJsonMod<OutputNode>(strJsonMod);
-            string str2 = OutputNodeConvert.Serialize(obj2);
-            Console.WriteLine("重构脚本 = " + str2);
         }
 
         // 显示BuffInfo
@@ -192,56 +222,6 @@ namespace PathOfWuxia
         {
             BattleFileId.Value = ScheduleID;
         }
-        //[HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleBuffer), "AddBuffer", new Type[] { typeof(WuxiaUnit), typeof(string), typeof(bool), typeof(bool) })]
-        //public static void Patch_BuffId(string bufferId)
-        //{
-        //    BuffFileId.Value = bufferId;
-        //}
 
-        // Movie加载
-        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeJsonConverter), "ReadJson", new Type[] { typeof(JsonReader), typeof(Type), typeof(object), typeof(JsonSerializer) })]
-        public static bool Patch_MovieLoadJson(ref object __result, JsonReader reader)
-        {
-            if (reader.TokenType == JsonToken.String)
-                __result = OutputNodeConvert.Deserialize(reader.Value.ToString());
-            else
-            {
-                // 增加json加载
-                //Console.WriteLine("检测到Json模式Node!");
-                __result = ModJson.FromReaderMod<OutputNode>(reader);
-            }
-            return false;
-        }
-        // Buff/Battle 加载
-        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeConvert), "Deserialize", new Type[] { typeof(string) })]
-        public static bool Patch_JsonConvert(string str, ref OutputNode __result)
-        {
-            if (str.StartsWith("[JSON", StringComparison.CurrentCultureIgnoreCase))
-            {
-                try
-                {
-                    string content;
-                    if (str.StartsWith("[JSONFILE", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        var array = Game.Resource.LoadBytes(str.Substring(10)); // remove [JSONFILE]
-                        content = Encoding.UTF8.GetString(array);
-                    }
-                    else
-                    {
-                        content = str.Substring(6); // remove [JSON]
-                    }
-                    Console.WriteLine("parse json: " + content);
-                    __result = ModJson.FromJsonMod<OutputNode>(content);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                    Debug.LogError("解析Json错误" + str);
-                    throw;
-                }
-                return false;
-            }
-            return true;
-        }
     }
 }

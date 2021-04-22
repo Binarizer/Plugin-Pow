@@ -8,7 +8,6 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using Heluo;
 using Heluo.Resource;
@@ -470,6 +469,7 @@ namespace PathOfWuxia
                 });
                 wait_button.PointerClick.AddListener(OnWaitClick);
             }
+            wait_button.gameObject.SetActive(bTimed);
             return true;
         }
         public static void OnWaitClick(BaseEventData eventData)

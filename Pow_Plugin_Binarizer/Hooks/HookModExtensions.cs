@@ -12,6 +12,9 @@ using Heluo.Flow;
 using Heluo.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
+using Newtonsoft.Json;
+using System.Text;
+using Heluo.Features;
 
 namespace PathOfWuxia
 {
@@ -541,7 +544,7 @@ namespace PathOfWuxia
                         s = s.Trim(new char[]{'"'});
                     }
                     Console.WriteLine("尝试解析扩展类型 = " + s);
-                    Type action = GlobalLib.GetModOutputNodeTypes().Find((Type item) => item.Name == s);
+                    Type action = ModOutputNodeConverter.GetNodeType(s);
                     if (action != null)
                     {
                         Console.WriteLine("解析扩展类型成功 = " + s);
@@ -549,6 +552,114 @@ namespace PathOfWuxia
                     }
                 }
             }
+        }
+        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeJsonConverter), "ReadJson", new Type[] { typeof(JsonReader), typeof(Type), typeof(object), typeof(JsonSerializer) })]
+        public static bool Patch_MovieLoadJson(ref object __result, JsonReader reader)
+        {
+            if (reader.TokenType == JsonToken.String)
+                __result = OutputNodeConvert.Deserialize(reader.Value.ToString());
+            else
+            {
+                // 增加json加载
+                //Console.WriteLine("检测到Json模式Node!");
+                __result = ModJson.FromReaderMod<OutputNode>(reader);
+            }
+            return false;
+        }
+        // OutputNode 进阶解析
+        [HarmonyPrefix, HarmonyPatch(typeof(OutputNodeConvert), "Deserialize", new Type[] { typeof(string) })]
+        public static bool Patch_JsonConvert(string str, ref OutputNode __result)
+        {
+            if (str.StartsWith("[JSON", StringComparison.CurrentCultureIgnoreCase))
+            {
+                try
+                {
+                    string jsonStr;
+                    if (str.StartsWith("[JSONFILE", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var array = Game.Resource.LoadBytes(str.Substring(10)); // remove [JSONFILE]
+                        jsonStr = Encoding.UTF8.GetString(array);
+                    }
+                    else
+                    {
+                        jsonStr = str.Substring(6); // remove [JSON]
+                    }
+                    jsonStr = GlobalLib.ReplaceText(jsonStr);   // preprocess
+                    Console.WriteLine("parse json: " + jsonStr);
+                    __result = ModJson.FromJsonMod<OutputNode>(jsonStr);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    Debug.LogError("解析Json错误" + str);
+                    throw;
+                }
+                return false;
+            }
+            return true;
+        }
+        // ScheduleGraph 加载
+        [HarmonyPrefix, HarmonyPatch(typeof(SchedulerComponent), "GetScheduleGraph", new Type[] { typeof(string) })]
+        public static bool Patch_ScheduleLoad(SchedulerComponent __instance, ref ScheduleGraph __result, string path)
+        {
+            // 取消Dictionary Cache，性能不太可能有问题
+            if (string.IsNullOrEmpty(path))
+            {
+                Heluo.Logger.Log("排程为空", Heluo.Logger.LogLevel.ERROR, "white", "GetScheduleGraph", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Features\\SchedulerComponent.cs", 162);
+                __result = null;
+                return false;
+            }
+            try
+            {
+                ScheduleGraph.Bundle bundle = ModJson.FromJsonResource<ScheduleGraph.Bundle>(path, true);
+                __result = new ScheduleGraph(bundle);
+            }
+            catch
+            {
+                Heluo.Logger.Log("Path = " + path + " 解析失败", Heluo.Logger.LogLevel.ERROR, "white", "GetScheduleGraph", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Features\\SchedulerComponent.cs", 162);
+                __result = null;
+            }
+            return false;
+        }
+        // BattleSchedule 加载
+        [HarmonyPrefix, HarmonyPatch(typeof(WuxiaBattleSchedule), "InitBattleScheduleData", new Type[] { typeof(string) })]
+        public static bool Patch_ScheduleLoad2(WuxiaBattleSchedule __instance, ref string ScheduleID)
+        {
+            if (!ScheduleID.IsNullOrEmpty())
+            {
+                string path = string.Format(GameConfig.BattleSchedulePath, GameConfig.Language, ScheduleID + ".json");
+                try
+                {
+                    Traverse.Create(__instance).Property("BattleSchedule").SetValue(ModJson.FromJsonResource<BattleSchedule>(path, true));
+                }
+                catch
+                {
+                    Debug.Log("無法讀取 : " + path);
+                }
+            }
+            ScheduleID = null;  //skip original load
+            return true;
+        }
+        // Heluo.Data.Buffer 加载
+        [HarmonyPrefix, HarmonyPatch(typeof(WuxiaBattleBuffer), "AddBuffer", new Type[] { typeof(WuxiaUnit), typeof(string), typeof(bool), typeof(bool) })]
+        public static bool Patch_ScheduleLoad3(WuxiaBattleBuffer __instance, WuxiaUnit unit, string bufferId, bool _is_born, bool _first)
+        {
+            if (bufferId.IsNullOrEmpty())
+            {
+                Heluo.Logger.LogError("要附加的BufferId是空值", "AddBuffer", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Battle\\WuxiaBattleBuffer.cs", 119);
+                return false;
+            }
+            try
+            {
+                string path = string.Format(GameConfig.ButtleBufferPath, GameConfig.Language, bufferId + ".json");
+                Heluo.Data.Buffer buffer = ModJson.FromJsonResource<Heluo.Data.Buffer>(path, false);    // buff大概不用替换id吧..
+                __instance.AddBuffer(unit, buffer, _is_born, _first);
+            }
+            catch
+            {
+                Heluo.Logger.LogError("附加Buffer : " + bufferId + " 失敗", "AddBuffer", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Battle\\WuxiaBattleBuffer.cs", 135);
+            }
+            return false;
         }
     }
 }

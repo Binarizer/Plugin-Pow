@@ -29,9 +29,9 @@ namespace PathOfWuxia
         {
             if (Application.isPlaying)
             {
-                string fromId = fromInfoId == "##" ? GlobalLib.DuelInfoId : fromInfoId;
+                string fromId = GlobalLib.ReplaceText(fromInfoId);
+                string toId = GlobalLib.ReplaceText(toInfoId);
                 CharacterInfoData from = Game.GameData.Character[fromId];
-                string toId = toInfoId == "##" ? GlobalLib.DuelInfoId : toInfoId;
                 CharacterInfoData to = Game.GameData.Character[toId];
                 CharacterExteriorData toEx = Game.GameData.Exterior[toId];
                 if (from == null || to == null || toEx == null || from == to)

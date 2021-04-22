@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Reflection;
 using HarmonyLib;
 using Heluo;
 using Heluo.Data;
-using Heluo.Flow;
 using Heluo.UI;
 using Heluo.Utility;
 
@@ -34,72 +33,6 @@ namespace PathOfWuxia
         }
 
         public static ModResourceProvider ModResource { get; set; }
-
-        static List<Type> _gameOutputNodeTypes = null;
-        public static List<Type> GetGameOutputNodeTypes()
-        {
-            if (_gameOutputNodeTypes == null)
-            {
-                Assembly assembly = Assembly.GetAssembly(typeof(OutputNode));
-                _gameOutputNodeTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(OutputNode)) select t).ToList();
-            }
-            return _gameOutputNodeTypes;
-        }
-        static List<Type> _modOutputNodeTypes = null;
-        public static List<Type> GetModOutputNodeTypes()
-        {
-            if (_modOutputNodeTypes == null)
-            {
-                Assembly assembly = Assembly.GetExecutingAssembly();
-                _modOutputNodeTypes = (from t in assembly.GetTypes() where t.IsSubclassOf(typeof(OutputNode)) select t).ToList();
-                Console.WriteLine("Mod添加OutputNode:");
-                foreach (var t in _modOutputNodeTypes)
-                {
-                    Console.WriteLine(t.Name.ToString());
-                }
-            }
-            return _modOutputNodeTypes;
-        }
-        static List<string> _outputNodeNameSpaces = null;
-        public static List<string> GetOutputNodeNameSpaces()
-        {
-            if ( _outputNodeNameSpaces == null)
-            {
-                _outputNodeNameSpaces = new List<string>();
-                foreach (var t in GetGameOutputNodeTypes())
-                {
-                    if (!_outputNodeNameSpaces.Contains(t.Namespace))
-                        _outputNodeNameSpaces.Add(t.Namespace);
-                }
-                foreach (var t in GetModOutputNodeTypes())
-                {
-                    if (!_outputNodeNameSpaces.Contains(t.Namespace))
-                        _outputNodeNameSpaces.Add(t.Namespace);
-                }
-                _outputNodeNameSpaces.Sort((a, b) => b.Length.CompareTo(a.Length));
-            }
-            return _outputNodeNameSpaces;
-        }
-        static List<string> _outputNodeAssemblies = null;
-        public static List<string> GetOutputNodeAssemblies()
-        {
-            if (_outputNodeAssemblies == null)
-            {
-                _outputNodeAssemblies = new List<string>();
-                foreach (var t in GetGameOutputNodeTypes())
-                {
-                    if (!_outputNodeAssemblies.Contains(t.Assembly.GetName().Name))
-                        _outputNodeAssemblies.Add(t.Assembly.GetName().Name);
-                }
-                foreach (var t in GetModOutputNodeTypes())
-                {
-                    if (!_outputNodeAssemblies.Contains(t.Assembly.GetName().Name))
-                        _outputNodeAssemblies.Add(t.Assembly.GetName().Name);
-                }
-                _outputNodeAssemblies.Sort((a, b) => b.Length.CompareTo(a.Length));
-            }
-            return _outputNodeAssemblies;
-        }
 
         public static PropsCategory GetScrollType(PropsCategory skillType)
         {
@@ -204,6 +137,32 @@ namespace PathOfWuxia
             ModExtensionSaveData.AddUniqueItem(props2);
             return props2;
         }
-        public static string DuelInfoId { get; set; }
+
+        // textReplacer
+        private static readonly Dictionary<string, string> textReplaceDict = new Dictionary<string, string>();
+        public static string ReplaceText(string input)
+        {
+            if (input == null)
+                return null;
+            string result = input;
+            foreach(var p in textReplaceDict)
+            {
+                result = result.Replace(p.Key, p.Value);
+            }
+            return result;
+        }
+        public static void SetReplaceText(string key, string value)
+        {
+            textReplaceDict[key] = value;
+        }
+
+        public static void ToFile(string str, string outputPath)
+        {
+            Console.WriteLine("导出到文件 " + outputPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+            var sr = File.CreateText(outputPath);
+            sr.Write(str);
+            sr.Close();
+        }
     }
 }

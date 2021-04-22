@@ -57,67 +57,48 @@ namespace PathOfWuxia
             {
                 string s = travelMovie.GetValue<string>();
                 Console.WriteLine("需要执行TravelMovie=" + s);
-                if (s.EndsWith("0_00"))
+                // Duel
+                GlobalLib.SetReplaceText("[npc0]", s.Substring(4, 6));   // m605[]
+                if (duelCinematic.Value.IsNullOrEmpty())
                 {
-                    new RunNurturanceAction
+                    // 默认方式，很蠢
+                    new NurturanceChangeBackground
                     {
-                        cinematicId = s
+                        backid = "M01_08_2D"
                     }.GetValue();
-                }
-                else
-                {
-                    // Duel
-                    GlobalLib.DuelInfoId = s.Substring(4, 6);   // m605[]
-                    if (duelCinematic.Value.IsNullOrEmpty())
+                    new NurturanceTransitionsAction
                     {
-                        // 默认方式，很蠢
-                        new NurturanceChangeBackground
+                        isTransitionOut = false
+                    }.GetValue();
+                    new RewardDuelProperty
+                    {
+                        toInfoId = GameConfig.Player,
+                        fromInfoId = "[npc0]"
+                    }.GetValue();
+                    new RewardDuelProperty
+                    {
+                        toInfoId = "[npc0]",
+                        fromInfoId = GameConfig.Player
+                    }.GetValue();
+                    new RewardEmotionAction
+                    {
+                        method = Method.Sub,
+                        value = 20
+                    }.GetValue();
+                    new NurturanceTransitionsAction
+                    {
+                        isTransitionOut = true
+                    }.GetValue();
+                    if (duelNextRound.Value)
+                    {
+                        if (Game.GameData.Round.CurrentTime == (int)TimeType.Day)
                         {
-                            backid = "M01_08_2D"
-                        }.GetValue();
-                        new NurturanceTransitionsAction
-                        {
-                            isTransitionOut = false
-                        }.GetValue();
-                        new RewardDuelProperty
-                        {
-                            toInfoId = GameConfig.Player,
-                            fromInfoId = "##"   // GlobalLib.DuelInfoId replace
-                        }.GetValue();
-                        new RewardDuelProperty
-                        {
-                            toInfoId = "##",   // GlobalLib.DuelInfoId replace
-                            fromInfoId = GameConfig.Player
-                        }.GetValue();
-                        new RewardEmotionAction
-                        {
-                            method = Method.Sub,
-                            value = 20
-                        }.GetValue();
-                        new NurturanceTransitionsAction
-                        {
-                            isTransitionOut = true
-                        }.GetValue();
-                        if (duelNextRound.Value)
-                        {
-                            if (Game.GameData.Round.CurrentTime == (int)TimeType.Day)
+                            new NurturanceLoadScenesAction
                             {
-                                new NurturanceLoadScenesAction
-                                {
-                                    mapId = "S0202",
-                                    isNextTime = true,
-                                    timeStage = Heluo.Manager.TimeStage.None
-                                }.GetValue();
-                            }
-                            else
-                            {
-                                new NurturanceLoadScenesAction
-                                {
-                                    mapId = "S0202",
-                                    isNextTime = false,
-                                    timeStage = Heluo.Manager.TimeStage.Begin
-                                }.GetValue();
-                            }
+                                mapId = "S0202",
+                                isNextTime = true,
+                                timeStage = Heluo.Manager.TimeStage.None
+                            }.GetValue();
                         }
                         else
                         {
@@ -125,17 +106,26 @@ namespace PathOfWuxia
                             {
                                 mapId = "S0202",
                                 isNextTime = false,
-                                timeStage = Heluo.Manager.TimeStage.None
+                                timeStage = Heluo.Manager.TimeStage.Begin
                             }.GetValue();
                         }
                     }
                     else
                     {
-                        new RunNurturanceAction
+                        new NurturanceLoadScenesAction
                         {
-                            cinematicId = duelCinematic.Value
+                            mapId = "S0202",
+                            isNextTime = false,
+                            timeStage = Heluo.Manager.TimeStage.None
                         }.GetValue();
                     }
+                }
+                else
+                {
+                    new RunCinematicAction
+                    {
+                        cinematicId = duelCinematic.Value
+                    }.GetValue();
                 }
                 travelMovie.SetValue(string.Empty);
                 return false;
