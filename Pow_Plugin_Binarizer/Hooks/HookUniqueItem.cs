@@ -49,11 +49,12 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(GlobalBindingModule), "OnCreateGameData", new Type[] { typeof(IContext) })]
         public static void ModPatch_RebindData(GlobalBindingModule __instance)
         {
+            Console.WriteLine("Redirect DataManager to ModDataManager");
             // 重定向... 暂时在这里拿到Kernal 很方便
             System.Reflection.PropertyInfo propInfo = typeof(Game).GetProperty("Data");
             MethodInfo mi = propInfo.GetSetMethod(true);
             mi.Invoke(null, new object[] { new ModDataManager() });
-            __instance.Rebind<IDataProvider>().To<ModDataManager>().InSingletonScope();
+            //__instance.Rebind<IDataProvider>().To<ModDataManager>().InSingletonScope();
         }
 
         // 2 额外数据读取存储

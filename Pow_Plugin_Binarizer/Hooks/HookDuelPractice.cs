@@ -15,14 +15,18 @@ namespace PathOfWuxia
     public class HookDuelPractice : IHook
     {
         static ConfigEntry<bool> duelOn;
-        static ConfigEntry<bool> duelNextRound;
-        static ConfigEntry<string> duelCinematic;
 
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            duelOn = plugin.Config.Bind("结对练习", "结对练习开关", false, "开启结伴练习模式，开启后交友-出游指令会被替换为此模式");
-            duelNextRound = plugin.Config.Bind("结对练习", "结对练习是否过回合", true, "结束后是否过回合");
-            duelCinematic = plugin.Config.Bind("结对练习", "结对练习影片", "", "此功能需要mod支持");
+            duelOn = plugin.Config.Bind("扩展功能", "切磋开关", false, "开启后交友-出游指令会被替换为此模式");
+            duelOn.SettingChanged += (o, e) =>
+            {
+                if (duelOn.Value)
+                {
+                    if (string.IsNullOrEmpty(Game.Resource?.LoadString("config/cinematic/mmod_duel.json")))
+                        duelOn.Value = false;
+                }
+            };
         }
 
         public void OnUpdate()
@@ -40,7 +44,7 @@ namespace PathOfWuxia
                 {
                     __instance.CreateTipInfo(WGTip.TipType.BigTitle, "相互学习，可提升互补属性", ""),
                     __instance.CreateTipInfo(WGTip.TipType.FacilityContext, "精神-20", ""),
-                    __instance.CreateTipInfo(WGTip.TipType.Title, Game.Data.Get<StringTable>(duelNextRound.Value?"SecondaryInterface1004":"SecondaryInterface1010").Text, "")
+                    __instance.CreateTipInfo(WGTip.TipType.Title, Game.Data.Get<StringTable>("SecondaryInterface1004").Text, "")
                 };
                 t.Field("travel_tip").Method("ShowTip", list).GetValue();
                 return false;
@@ -55,76 +59,13 @@ namespace PathOfWuxia
             var travelMovie = t.Field("UIInfo").Field("travelmovienumber");
             if (!travelMovie.GetValue<string>().IsNullOrEmpty() && duelOn.Value)
             {
-                string s = travelMovie.GetValue<string>();
-                Console.WriteLine("需要执行TravelMovie=" + s);
                 // Duel
+                string s = travelMovie.GetValue<string>();
                 GlobalLib.SetReplaceText("[npc0]", s.Substring(4, 6));   // m605[]
-                if (duelCinematic.Value.IsNullOrEmpty())
-                {
-                    // 默认方式，很蠢
-                    new NurturanceChangeBackground
-                    {
-                        backid = "M01_08_2D"
-                    }.GetValue();
-                    new NurturanceTransitionsAction
-                    {
-                        isTransitionOut = false
-                    }.GetValue();
-                    new RewardDuelProperty
-                    {
-                        toInfoId = GameConfig.Player,
-                        fromInfoId = "[npc0]"
-                    }.GetValue();
-                    new RewardDuelProperty
-                    {
-                        toInfoId = "[npc0]",
-                        fromInfoId = GameConfig.Player
-                    }.GetValue();
-                    new RewardEmotionAction
-                    {
-                        method = Method.Sub,
-                        value = 20
-                    }.GetValue();
-                    new NurturanceTransitionsAction
-                    {
-                        isTransitionOut = true
-                    }.GetValue();
-                    if (duelNextRound.Value)
-                    {
-                        if (Game.GameData.Round.CurrentTime == (int)TimeType.Day)
-                        {
-                            new NurturanceLoadScenesAction
-                            {
-                                mapId = "S0202",
-                                isNextTime = true,
-                                timeStage = Heluo.Manager.TimeStage.None
-                            }.GetValue();
-                        }
-                        else
-                        {
-                            new NurturanceLoadScenesAction
-                            {
-                                mapId = "S0202",
-                                isNextTime = false,
-                                timeStage = Heluo.Manager.TimeStage.Begin
-                            }.GetValue();
-                        }
-                    }
-                    else
-                    {
-                        new NurturanceLoadScenesAction
-                        {
-                            mapId = "S0202",
-                            isNextTime = false,
-                            timeStage = Heluo.Manager.TimeStage.None
-                        }.GetValue();
-                    }
-                }
-                else
                 {
                     new RunCinematicAction
                     {
-                        cinematicId = duelCinematic.Value
+                        cinematicId = "mmod_duel"
                     }.GetValue();
                 }
                 travelMovie.SetValue(string.Empty);

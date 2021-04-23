@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Text;
 using Heluo.Data.Converter;
 using Heluo.Flow;
 using Heluo.Flow.Battle;
@@ -144,6 +145,14 @@ namespace PathOfWuxia
     // Mod OutputNode Json Converter
     public class ModOutputNodeConverter : JsonConverter
     {
+        public enum WriteMode
+        {
+            Value,
+            Doc
+        }
+
+        readonly WriteMode writeMode;
+        public ModOutputNodeConverter(WriteMode mode = WriteMode.Value) => writeMode = mode;
         // override methods
         public override bool CanConvert(Type objectType)
         {
@@ -196,17 +205,50 @@ namespace PathOfWuxia
                 defaultValue = Activator.CreateInstance(value.GetType()) as OutputNode;
                 ti.defaults.Add(defaultValue);
             }
-            Console.WriteLine("type = " + type.Name);
+            //Console.WriteLine("type = " + type.Name);
             var fieldInfos = from f in type.GetFields() where !f.HasAttribute<JsonIgnoreAttribute>() && !f.IsLiteral select f;
             foreach (FieldInfo info in fieldInfos)
             {
-                Console.WriteLine("name = "+info.Name);
-                var v = info.GetValue(value);
-                var d = info.GetValue(defaultValue);
-                if (!v.Equals(d))
-                    o.Add(info.Name, JToken.FromObject(v, serializer));
+                if (writeMode == WriteMode.Value)
+                {
+                    //Console.WriteLine("name = "+info.Name);
+                    var v = info.GetValue(value);
+                    var d = info.GetValue(defaultValue);
+                    if (v != null && !v.Equals(d))
+                        o.Add(info.Name, JToken.FromObject(v, serializer));
+                }
+                else
+                {
+                    var v = info.GetValue(value);
+                    if (info.HasAttribute<InputFieldAttribute>())
+                    {
+                        o.Add("@" + info.Name, TypeInfoToDoc(info, info.GetAttribute<InputFieldAttribute>().Name));
+                    }
+                    else if (info.HasAttribute<ArgumentAttribute>())
+                    {
+                        o.Add("@" + info.Name, TypeInfoToDoc(info, info.GetAttribute<ArgumentAttribute>().Name));
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                    if (v!=null)
+                        o.Add(info.Name, JToken.FromObject(v, serializer));
+                    else
+                        o.Add(info.Name, null);
+                }
             }
             o.WriteTo(writer);
+        }
+
+        string TypeInfoToDoc(FieldInfo info, string desc)
+        {
+            string s = string.Format("{0} <{1}>", desc, info.FieldType.Name);
+            if (info.FieldType.IsEnum)
+            {
+                s = string.Format("{0}:[{1}]", s, string.Join(",", Enum.GetNames(info.FieldType)));
+            }
+            return s;
         }
 
         // static class & methods
@@ -234,6 +276,114 @@ namespace PathOfWuxia
             }
             return jsonStr;
         }
+
+        public static void ExportDoc(string target)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Node说明文档");
+            DocNode root = new DocNode(typeof(OutputNode));
+            foreach (TypeInfo info in TypeInfos.Values)
+            {
+                foreach (Type t in info.types)
+                {
+                    if (!t.IsAbstract && !t.IsGenericType)
+                        root.AddType(t);
+                }
+            }
+            JsonSerializerSettings setting = new JsonSerializerSettings
+            {
+                //DefaultValueHandling = DefaultValueHandling.Ignore,
+                NullValueHandling = NullValueHandling.Ignore,
+                //ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                //TypeNameHandling = TypeNameHandling.Auto,
+                Converters = new JsonConverter[]
+                {
+                    new Vector3Converter(),
+                    new EnumToStringConverter(),
+                    //new BufferEventNodeConverter(),
+                    new ModOutputNodeConverter(WriteMode.Doc),
+                }
+            };
+            string jsonStr = JsonConvert.SerializeObject(root, Formatting.Indented, setting);
+            Console.WriteLine(jsonStr);
+            GlobalLib.ToFile(jsonStr, target);
+        }
+
+        [JsonObject]
+        public class DocNode
+        {
+            public DocNode(Type t)
+            {
+                type = t;
+                if (!t.IsAbstract && !t.IsGenericType)
+                    Default = Activator.CreateInstance(type) as OutputNode;
+            }
+            public DocNode AddType(Type t)
+            {
+                if (t.BaseType == type)
+                {
+                    if ( !child.ContainsKey(t))
+                    {
+                        child.Add(t, new DocNode(t));
+                    }
+                    return child[t];
+                }
+                else
+                {
+                    return AddType(t.BaseType).AddType(t);
+                }
+            }
+
+            public string Category
+            {
+                get
+                {
+                    if (type.IsGenericType || type.IsAbstract)
+                    {
+                        return type.ToString();
+                    }
+                    return null;
+                }
+            }
+
+            public string Desc
+            {
+                get
+                {
+                    if (type.HasAttribute<DescriptionAttribute>())
+                    {
+                        return type.GetAttribute<DescriptionAttribute>().Value;
+                    }
+                    return null;
+                }
+            }
+
+            public OutputNode Default { get; }
+
+            public string HeluoScript
+            {
+                get
+                {
+                    if (Default != null)
+                        return OutputNodeConvert.Serialize(Default);
+                    return null;
+                }
+            }
+
+            public ICollection<DocNode> Child
+            {
+                get
+                {
+                    if (child.Count > 0)
+                        return child.Values;
+                    return null;
+                }
+            }
+
+            Type type;
+            Dictionary<Type, DocNode> child = new Dictionary<Type, DocNode>();
+        }
+
         public class Binder : SerializationBinder
         {
             public override Type BindToType(string assemblyName, string typeName)

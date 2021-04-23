@@ -27,6 +27,7 @@ namespace PathOfWuxia
             DebugOutDir = plugin.Config.Bind("Debug功能", "调试路径", "export/", adv1);
 
             var adv = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true });
+            NodeDocKey = plugin.Config.Bind("Debug功能", "OutputNode说明文档导出", KeyCode.P, adv);
             NodeContent = plugin.Config.Bind("Debug功能", "OutputNode内容(原始格式)", "", adv);
             NodeFileKey = plugin.Config.Bind("Debug功能", "OutputNode输出(Json格式)", KeyCode.O, adv);
             NodeFilePath = plugin.Config.Bind("Debug功能", "OutputNode输出路径", "OutputNode.json", adv);
@@ -53,6 +54,7 @@ namespace PathOfWuxia
         }
         private static ConfigEntry<bool> DebugOn;
         private static ConfigEntry<string> DebugOutDir;
+        private static ConfigEntry<KeyCode> NodeDocKey;
         private static ConfigEntry<string> NodeContent;
         private static ConfigEntry<KeyCode> NodeFileKey;
         private static ConfigEntry<string> NodeFilePath;
@@ -74,6 +76,11 @@ namespace PathOfWuxia
         {
             if (!DebugOn.Value)
                 return;
+            if (Input.GetKeyDown(NodeDocKey.Value))
+            {
+                string target = DebugOutDir.Value + "NodeHelpDoc.json";
+                ModOutputNodeConverter.ExportDoc(target);
+            }
             if (Input.GetKeyDown(NodeFileKey.Value) && !string.IsNullOrEmpty(NodeContent.Value))
             {
                 // OutputNode
@@ -86,7 +93,7 @@ namespace PathOfWuxia
             if (Input.GetKeyDown(MovieFileKey.Value) && !string.IsNullOrEmpty(MovieFileId.Value))
             {
                 // movie                
-                string source = string.Format(MovieFileType.Value == MovieType.Cinematic?GameConfig.CinematicPath:GameConfig.SchedulerPath, MovieFileId.Value);
+                string source = string.Format(MovieFileType.Value == MovieType.Cinematic ? GameConfig.CinematicPath : GameConfig.SchedulerPath, MovieFileId.Value);
                 string target = string.Format(DebugOutDir.Value + MovieFilePath.Value, MovieFileId.Value);
                 var obj = ModJson.FromJsonResource<ScheduleGraph.Bundle>(source);
                 if (JsonFormat.Value)

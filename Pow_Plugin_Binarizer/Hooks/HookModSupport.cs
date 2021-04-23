@@ -45,7 +45,7 @@ namespace PathOfWuxia
         }
         static private void BindSubConfig()
         {
-            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
+            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "ajsgamr.ogg", "下次进入主菜单生效");
             modCustomVoice = Plugin.Config.Bind("Mod设置", "Mod语音开关", false, "配音开关");
         }
 
