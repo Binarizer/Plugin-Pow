@@ -27,7 +27,7 @@ namespace PathOfWuxia
             DebugOutDir = plugin.Config.Bind("Debug功能", "调试路径", "export/", adv1);
 
             var adv = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true });
-            NodeDocKey = plugin.Config.Bind("Debug功能", "OutputNode说明文档导出", KeyCode.P, adv);
+            NodeDocKey = plugin.Config.Bind("Debug功能", "Mod文档导出", KeyCode.P, adv);
             NodeContent = plugin.Config.Bind("Debug功能", "OutputNode内容(原始格式)", "", adv);
             NodeFileKey = plugin.Config.Bind("Debug功能", "OutputNode输出(Json格式)", KeyCode.O, adv);
             NodeFilePath = plugin.Config.Bind("Debug功能", "OutputNode输出路径", "OutputNode.json", adv);
@@ -78,8 +78,10 @@ namespace PathOfWuxia
                 return;
             if (Input.GetKeyDown(NodeDocKey.Value))
             {
-                string target = DebugOutDir.Value + "NodeHelpDoc.json";
+                string target = DebugOutDir.Value + "游戏指令(OutputNode)文档.json";
                 ModOutputNodeConverter.ExportDoc(target);
+                target = DebugOutDir.Value + "txt表格(Item)文档.json";
+                ItemDocConverter.ExportDoc(target);
             }
             if (Input.GetKeyDown(NodeFileKey.Value) && !string.IsNullOrEmpty(NodeContent.Value))
             {

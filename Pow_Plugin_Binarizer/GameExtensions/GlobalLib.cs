@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using HarmonyLib;
 using Heluo;
 using Heluo.Data;
@@ -136,6 +137,15 @@ namespace PathOfWuxia
             });
             ModExtensionSaveData.AddUniqueItem(props2);
             return props2;
+        }
+        public static string TypeToDoc(Type t, string desc)
+        {
+            string s = string.Format("{0} <{1}>", desc, t.Name);
+            if (t.IsEnum)
+            {
+                s = string.Format("{0}:[{1}]", s, string.Join(",", Enum.GetNames(t)));
+            }
+            return s;
         }
 
         // textReplacer

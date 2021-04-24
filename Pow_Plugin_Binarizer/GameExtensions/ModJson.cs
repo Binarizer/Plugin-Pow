@@ -4,6 +4,8 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
+using FileHelpers;
+using Heluo;
 using Heluo.Data.Converter;
 using Heluo.Flow;
 using Heluo.Flow.Battle;
@@ -142,6 +144,7 @@ namespace PathOfWuxia
             writer.WriteValue(Enum.GetName(value.GetType(), value));
         }
     }
+
     // Mod OutputNode Json Converter
     public class ModOutputNodeConverter : JsonConverter
     {
@@ -222,11 +225,11 @@ namespace PathOfWuxia
                     var v = info.GetValue(value);
                     if (info.HasAttribute<InputFieldAttribute>())
                     {
-                        o.Add("@" + info.Name, TypeInfoToDoc(info, info.GetAttribute<InputFieldAttribute>().Name));
+                        o.Add("@" + info.Name, GlobalLib.TypeToDoc(info.FieldType, info.GetAttribute<InputFieldAttribute>().Name));
                     }
                     else if (info.HasAttribute<ArgumentAttribute>())
                     {
-                        o.Add("@" + info.Name, TypeInfoToDoc(info, info.GetAttribute<ArgumentAttribute>().Name));
+                        o.Add("@" + info.Name, GlobalLib.TypeToDoc(info.FieldType, info.GetAttribute<ArgumentAttribute>().Name));
                     }
                     else
                     {
@@ -239,16 +242,6 @@ namespace PathOfWuxia
                 }
             }
             o.WriteTo(writer);
-        }
-
-        string TypeInfoToDoc(FieldInfo info, string desc)
-        {
-            string s = string.Format("{0} <{1}>", desc, info.FieldType.Name);
-            if (info.FieldType.IsEnum)
-            {
-                s = string.Format("{0}:[{1}]", s, string.Join(",", Enum.GetNames(info.FieldType)));
-            }
-            return s;
         }
 
         // static class & methods
@@ -279,9 +272,10 @@ namespace PathOfWuxia
 
         public static void ExportDoc(string target)
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Node说明文档");
-            DocNode root = new DocNode(typeof(OutputNode));
+            DocNode root = new DocNode(typeof(OutputNode))
+            {
+                Remark = "游戏策划用指令集：前半部分为过场动画指令(GameAction)，后半部分为战场指令（BattleNode,BufferNode)"
+            };
             foreach (TypeInfo info in TypeInfos.Values)
             {
                 foreach (Type t in info.types)
@@ -322,7 +316,7 @@ namespace PathOfWuxia
             {
                 if (t.BaseType == type)
                 {
-                    if ( !child.ContainsKey(t))
+                    if (!child.ContainsKey(t))
                     {
                         child.Add(t, new DocNode(t));
                     }
@@ -333,6 +327,8 @@ namespace PathOfWuxia
                     return AddType(t.BaseType).AddType(t);
                 }
             }
+
+            public string Remark { get; set; }
 
             public string Category
             {
@@ -719,6 +715,76 @@ namespace PathOfWuxia
         {
             if (preOrderMap.ContainsKey(i))
                 i = preOrderMap[i];
+        }
+    }
+
+    // Item Json Doc Converter (only for document)
+    public class ItemDocConverter : JsonConverter
+    {
+        // override methods
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType.IsSubclassOf(typeof(Heluo.Data.Item));
+        }
+
+        public override bool CanRead => false;
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            throw new NotImplementedException("Unnecessary because CanRead is false. The type will skip the converter.");
+        }
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            Type type = value.GetType();
+            JObject o = new JObject
+            {
+                {"$type", type.Name }
+            };
+            var memberInfos = (from f in type.GetFields()
+                               where f.HasAttribute<FieldOrderAttribute>() && !f.IsLiteral
+                               select (f as MemberInfo, f.GetAttribute<DisplayNameAttribute>()?.Name, f.FieldType, f.GetAttribute<FieldOrderAttribute>().Order)).ToList();
+            memberInfos.AddRange((from p in type.GetProperties()
+                                  where p.HasAttribute<FieldOrderAttribute>()
+                                  select (p as MemberInfo, p.GetAttribute<DisplayNameAttribute>()?.Name, p.PropertyType, p.GetAttribute<FieldOrderAttribute>().Order)).ToList());
+            memberInfos.Sort((a, b) => { return a.Order.CompareTo(b.Order); });
+            for (int i = 0; i < memberInfos.Count; ++i)
+            {
+                var info = memberInfos[i];
+                o.Add(((char)('A' + i)).ToString(), GlobalLib.TypeToDoc(info.FieldType, info.Name));
+                var v = info.Item1.MemberType == MemberTypes.Field ? (info.Item1 as FieldInfo).GetValue(value) : (info.Item1 as PropertyInfo).GetValue(value);
+                o.Add(info.Item1.Name, v == null ? null : JToken.FromObject(v, serializer));
+            }
+            o.WriteTo(writer);
+        }
+
+        public static void ExportDoc(string target)
+        {
+            DocItems root = new DocItems()
+            {
+                Remark = "数据表：即textfiles/[$type].txt文件, 可以copy进Excel中, A-Z对应列名",
+                list = (from t in typeof(Heluo.Data.Item).Assembly.GetTypes()
+                        where t.IsSubclassOf(typeof(Heluo.Data.Item)) && !t.HasAttribute<Hidden>(false)
+                        select Activator.CreateInstance(t) as Heluo.Data.Item).ToList()
+            };
+            JsonSerializerSettings setting = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore,
+                Converters = new JsonConverter[]
+                {
+                    new Vector3Converter(),
+                    new EnumToStringConverter(),
+                    new ModOutputNodeConverter(),
+                    new ItemDocConverter(),
+                }
+            };
+            string jsonStr = JsonConvert.SerializeObject(root, Formatting.Indented, setting);
+            Console.WriteLine(jsonStr);
+            GlobalLib.ToFile(jsonStr, target);
+        }
+        public class DocItems
+        {
+            public string Remark;
+            public List<Heluo.Data.Item> list;
         }
     }
 }
