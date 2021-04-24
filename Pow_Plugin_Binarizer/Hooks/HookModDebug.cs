@@ -20,6 +20,10 @@ namespace PathOfWuxia
     // Mod辅助扩展
     public class HookModDebug : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             var adv1 = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 3 });

@@ -18,6 +18,10 @@ namespace PathOfWuxia
     // 战斗中获得招式经验、招式等级自定义
     public class HookSkillExp : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             skillExpInBattle = plugin.Config.Bind("扩展功能", "战斗招式经验", false, "开关战斗经验获取系统");

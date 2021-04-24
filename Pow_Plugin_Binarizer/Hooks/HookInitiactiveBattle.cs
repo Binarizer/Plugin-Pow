@@ -22,6 +22,10 @@ namespace PathOfWuxia
     // 半即时战斗
     public class HookInitiactiveBattle : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             initiactiveBattle = plugin.Config.Bind("扩展功能", "半即时战斗", false, "开关时序制半即时战斗系统");

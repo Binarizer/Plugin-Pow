@@ -21,6 +21,10 @@ namespace PathOfWuxia
     // Mod辅助扩展
     public class HookModExtensions : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         static private BaseUnityPlugin Plugin = null;
 
         public void OnRegister(BaseUnityPlugin plugin)

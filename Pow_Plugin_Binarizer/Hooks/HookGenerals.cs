@@ -41,6 +41,10 @@ namespace PathOfWuxia
         static ConfigEntry<bool> cameraFree;
         static ConfigEntry<bool> cameraFree_Battle;
 
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             speedValue = plugin.Config.Bind("游戏设定", "速度值", 1.5f, "调整速度值");

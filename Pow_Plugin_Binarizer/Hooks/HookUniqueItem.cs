@@ -18,6 +18,11 @@ namespace PathOfWuxia
     // 独特物品系统(装备重铸、随机词条等等)
     public class HookUniqueItem : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
+
         public void OnRegister(BaseUnityPlugin plugin)
         {
             var resolver = HeluoResolver.Instance;

@@ -26,6 +26,10 @@ namespace PathOfWuxia
     // 多Mod支持
     public class HookModSupport : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         static private BaseUnityPlugin Plugin = null;
 
         public void OnRegister(BaseUnityPlugin plugin)

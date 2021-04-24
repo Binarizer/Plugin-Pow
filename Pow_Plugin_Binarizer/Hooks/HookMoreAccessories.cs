@@ -18,6 +18,10 @@ namespace PathOfWuxia
     // 饰品栏增加
     public class HookMoreAccessories : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             moreAccessories = plugin.Config.Bind<int>("扩展功能", "多重饰品栏", 0, "大于0时可装备多个饰品");

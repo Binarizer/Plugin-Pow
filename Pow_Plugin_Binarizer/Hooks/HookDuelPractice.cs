@@ -16,6 +16,10 @@ namespace PathOfWuxia
     {
         static ConfigEntry<bool> duelOn;
 
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             duelOn = plugin.Config.Bind("扩展功能", "切磋开关", false, "开启后交友-出游指令会被替换为此模式");

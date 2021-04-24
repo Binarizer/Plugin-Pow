@@ -23,6 +23,10 @@ namespace PathOfWuxia
         static ConfigEntry<KeyCode> teamMemberRemoveAll;
         static ConfigEntry<KeyCode> communityRemove;
 
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             teamManageOn = plugin.Config.Bind("自由组队", "开启自由组队模式", false,

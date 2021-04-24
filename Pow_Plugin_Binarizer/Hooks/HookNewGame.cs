@@ -17,6 +17,10 @@ namespace PathOfWuxia
     // 开局设定
     public class HookNewGame : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         public void OnRegister(BaseUnityPlugin plugin)
         {
             newGameAttributePoint = plugin.Config.Bind("开局设定", "属性点", 50, "设置开局属性点");

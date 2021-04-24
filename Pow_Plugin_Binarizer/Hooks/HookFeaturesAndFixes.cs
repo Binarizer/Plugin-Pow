@@ -16,6 +16,10 @@ namespace PathOfWuxia
     // bug修复和一些增强特性
     public class HookFeaturesAndFixes : IHook
     {
+        public IEnumerable<Type> GetRegisterTypes()
+        {
+            return new Type[] { GetType() };
+        }
         void IHook.OnRegister(BaseUnityPlugin plugin)
         {
             elementPos = plugin.Config.Bind("五行显示", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");

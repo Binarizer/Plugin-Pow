@@ -342,6 +342,7 @@
     <Compile Include="GameExtensions\RewardUniquePropsFromProps.cs" />
     <Compile Include="GameExtensions\RewardUniqueEquipByValue.cs" />
     <Compile Include="GameExtensions\RewardUniqueScroll.cs" />
+    <Compile Include="Hooks\HookEnglishTranslate.cs" />
     <Compile Include="Hooks\HookDuelPractice.cs" />
     <Compile Include="Hooks\HookModDebug.cs" />
     <Compile Include="Hooks\HookTeamManage.cs" />

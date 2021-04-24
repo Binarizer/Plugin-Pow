@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using BepInEx;
+using System.Linq;
 
 namespace PathOfWuxia
 {
@@ -11,7 +12,7 @@ namespace PathOfWuxia
         void RegisterHook(IHook hook)
         {
             hook.OnRegister(this);
-            Harmony.CreateAndPatchAll( hook.GetType() );
+            hook.GetRegisterTypes().Do(t => { Harmony.CreateAndPatchAll(t); Console.WriteLine("Patch " + t.Name); });
             hooks.Add(hook);
         }
 
@@ -23,6 +24,7 @@ namespace PathOfWuxia
 
             RegisterHook(new HookModSupport());
             RegisterHook(new HookGenerals());
+            RegisterHook(new HookEnglishTranslate());
             RegisterHook(new HookNewGame());
             RegisterHook(new HookFeaturesAndFixes());
             RegisterHook(new HookMoreAccessories());
