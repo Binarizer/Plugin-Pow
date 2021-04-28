@@ -39,14 +39,14 @@ namespace PathOfWuxia
         static ConfigEntry<string> newGamePortraitOverride;
 
         // 1 可选多个特性
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(CtrlRegistration), "OnTraitClick")]
-        public static IEnumerable<CodeInstruction> StartPatch_UnlockTraitCount(IEnumerable<CodeInstruction> instructions)
-        {
-            var codes = instructions.ToList();
-            codes[47].opcode = OpCodes.Ldc_I4_M1;   // 原本为Ldc_I4_2
-            return codes.AsEnumerable();
-        }
+        //[HarmonyTranspiler]
+        //[HarmonyPatch(typeof(CtrlRegistration), "OnTraitClick")]
+        //public static IEnumerable<CodeInstruction> StartPatch_UnlockTraitCount(IEnumerable<CodeInstruction> instructions)
+        //{
+        //    var codes = instructions.ToList();
+        //    codes[47].opcode = OpCodes.Ldc_I4_M1;   // 原本为Ldc_I4_2
+        //    return codes.AsEnumerable();
+        //}
 
         // 2 纪录开局数据
         private static Dictionary<CharacterUpgradableProperty, int> newAttributeValues;  // +

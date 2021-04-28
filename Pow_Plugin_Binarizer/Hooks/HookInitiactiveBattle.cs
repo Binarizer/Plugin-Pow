@@ -28,7 +28,8 @@ namespace PathOfWuxia
         }
         public void OnRegister(BaseUnityPlugin plugin)
         {
-            initiactiveBattle = plugin.Config.Bind("扩展功能", "半即时战斗", false, "开关时序制半即时战斗系统");
+            initiactiveBattle = plugin.Config.Bind("战斗模式", "半即时战斗", false, "开关时序制半即时战斗系统");
+            autoBattle = plugin.Config.Bind("战斗模式", "自动战斗", false, "我方自动战斗，重开战斗生效");
         }
 
         public void OnUpdate()
@@ -62,6 +63,7 @@ namespace PathOfWuxia
         }
 
         private static ConfigEntry<bool> initiactiveBattle;
+        private static ConfigEntry<bool> autoBattle;
         public static bool bTimed = false;   // 实际判定，需重启战斗才可生效
 
         public class TimeInfo
@@ -526,6 +528,12 @@ namespace PathOfWuxia
         [HarmonyPrefix, HarmonyPatch(typeof(BattleState), "FirstUnitSelect")]
         public static bool TimedPatch_FirstUnit(BattleState __instance)
         {
+            if (autoBattle.Value)
+            {
+                __instance.SendEvent("AI");
+                return false;
+            }
+
             if (bTimed)
             {
                 var t = Traverse.Create(__instance);
@@ -724,7 +732,7 @@ namespace PathOfWuxia
             WuxiaUnit wuxiaUnit = Timed_Current();
             if (wuxiaUnit != null)
             {
-                if (wuxiaUnit.faction != Faction.Player)
+                if (wuxiaUnit.faction != Faction.Player || autoBattle.Value)
                 {
                     state.SendEvent("AI");
                 }
@@ -759,7 +767,7 @@ namespace PathOfWuxia
                     if (wuxiaUnit3 != null)
                     {
                         BM.Turn++;
-                        if (wuxiaUnit3.faction != Faction.Player)
+                        if (wuxiaUnit3.faction != Faction.Player || autoBattle.Value)
                         {
                             state.SendEvent("AI");
                             return;
@@ -883,7 +891,7 @@ namespace PathOfWuxia
         {
             var t = Traverse.Create(state);
             BM.Time = BattleEventToggleTime.BeginAITurn;
-            while (Timed_Current() != null && Timed_Current().faction != Faction.Player)
+            while (Timed_Current() != null && (Timed_Current().faction != Faction.Player || autoBattle.Value))
             {
                 WuxiaUnit unit = Timed_Current();
                 List<WuxiaUnit> second = (from u in BM.WuxiaUnits
