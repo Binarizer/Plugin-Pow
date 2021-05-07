@@ -35,7 +35,7 @@ namespace PathOfWuxia
         public void OnRegister(BaseUnityPlugin plugin)
         {
             Plugin = plugin;
-            modBasePath = plugin.Config.Bind("Mod设置", "Mod路径", "Mods\\", new ConfigDescription("Mod主目录", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 3 }));
+            modBasePath = plugin.Config.Bind("Mod设置", "Mod总路径", "Mods\\", new ConfigDescription("Mod主目录", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 3 }));
             modBattleVoicePath = Plugin.Config.Bind("Mod设置", "Mod战斗语音路径", "audio/voice/um_{0}_{1}.ogg", new ConfigDescription("可更改相对路径和扩展名", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
             modTalkVoicePath = Plugin.Config.Bind("Mod设置", "Mod对话语音路径", "audio/voice/talk_{0}.ogg", new ConfigDescription("可更改相对路径和扩展名", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
             string[] dirs = null;
@@ -300,7 +300,7 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(UIBattle), "OpenBattleStatus", new Type[] { typeof(WuxiaUnit) })]
         public static void ModPatch_BattleVoice(WuxiaUnit _unit)
         {
-            if (modCustomVoice.Value)
+            if (GlobalLib.ModResource != null && modCustomVoice.Value)
             {
                 PlayCvByCharacter(_unit.ExteriorId);
             }
@@ -319,7 +319,7 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(CtrlTalk), "SetMessageView", new Type[] { typeof(Talk) })]
         public static void ModPatch_TalkVoice(Talk talk)
         {
-            if (modCustomVoice.Value)
+            if (GlobalLib.ModResource != null && modCustomVoice.Value)
             {
                 PlayCvByPath(string.Format(modTalkVoicePath.Value, talk.Id));
             }
