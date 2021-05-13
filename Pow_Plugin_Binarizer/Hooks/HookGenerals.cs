@@ -12,6 +12,8 @@ using Heluo.Battle;
 using Heluo.Components;
 using Heluo.Controller;
 using Heluo.Utility;
+using Heluo.Platform;
+using Steamworks;
 
 namespace PathOfWuxia
 {
@@ -26,6 +28,7 @@ namespace PathOfWuxia
         }
         static ConfigEntry<float> speedValue;
         static ConfigEntry<KeyCode> speedKey;
+        static ConfigEntry<int> saveCount;
         static ConfigEntry<KeyCode> changeAnim;
         static ConfigEntry<KeyCode> changeAnimBack;
         static ConfigEntry<GameLevel> difficulty;
@@ -49,6 +52,8 @@ namespace PathOfWuxia
         {
             speedValue = plugin.Config.Bind("游戏设定", "速度值", 1.5f, "调整速度值");
             speedKey = plugin.Config.Bind("游戏设定", "速度热键", KeyCode.F2, "开关速度调节");
+            saveCount = plugin.Config.Bind("游戏设定", "存档数量", 20,
+                new ConfigDescription("存档数量上限", new AcceptableValueRange<int>(20, 100)));
             difficulty = plugin.Config.Bind("游戏设定", "难度值", GameLevel.Normal, "调节游戏难度");
             difficulty.SettingChanged += OnGameLevelChange;
             probablyMode = plugin.Config.Bind("游戏设定", "随机事件方式", ProbablyMode.None, "None-原版 SmallChance-小概率事件必发生 FixedRandomValue-设定产生的随机数");
@@ -233,6 +238,38 @@ namespace PathOfWuxia
                     param.distance = Traverse.Create(__instance).Method("ClampAngle", new object[] { param.distance, param.minDistance, param.maxDistance }).GetValue<float>();
                 }
             }
+        }
+
+        // 6 存档数量上限
+        [HarmonyPrefix, HarmonyPatch(typeof(SteamPlatform), "ListSaveHeaderFile", new Type[]{ typeof(GameSaveType) } )]
+        public static bool SaveCountPatch_ListSaveHeaderFile(SteamPlatform __instance, GameSaveType Type, ref List<PathOfWuxiaSaveHeader> __result)
+        {
+            if (Type == GameSaveType.Manual)
+            {
+                List<PathOfWuxiaSaveHeader> list = new List<PathOfWuxiaSaveHeader>();
+                string format = "PathOfWuxia_{0:00}.save";
+                for (int i = 0; i < saveCount.Value; i++)
+                {
+                    PathOfWuxiaSaveHeader pathOfWuxiaSaveHeader = null;
+                    string text = string.Format(format, i);
+                    if (SteamRemoteStorage.FileExists(text))
+                    {
+                        __instance.GetSaveFileHeader(text, ref pathOfWuxiaSaveHeader);
+                    }
+                    else
+                    {
+                        pathOfWuxiaSaveHeader = new PathOfWuxiaSaveHeader();
+                    }
+                    if (pathOfWuxiaSaveHeader == null)
+                    {
+                        pathOfWuxiaSaveHeader = new PathOfWuxiaSaveHeader();
+                    }
+                    list.Add(pathOfWuxiaSaveHeader);
+                }
+                __result = list;
+                return false;
+            }
+            return true;
         }
     }
 }

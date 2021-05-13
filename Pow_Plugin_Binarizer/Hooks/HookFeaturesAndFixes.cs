@@ -22,11 +22,11 @@ namespace PathOfWuxia
         }
         void IHook.OnRegister(BaseUnityPlugin plugin)
         {
-            elementPos = plugin.Config.Bind("五行显示", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
-            elementTextPos = plugin.Config.Bind("五行显示", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
-            elementKey = plugin.Config.Bind("五行显示", "五行显示热键", KeyCode.F3, "战斗时显示五行。调整位置后需开关一次生效");
-
-            thresholdDisplay = plugin.Config.Bind("游戏设定", "显示练满所需点数", true, "是否提示n次练满所需相应数值");
+            elementPos = plugin.Config.Bind("界面改进", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
+            elementTextPos = plugin.Config.Bind("界面改进", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
+            elementKey = plugin.Config.Bind("界面改进", "五行显示热键", KeyCode.F3, "战斗时显示五行。调整位置后需开关一次生效");
+            showThreshold = plugin.Config.Bind("界面改进", "显示练满所需点数", true, "是否提示n次练满所需相应数值");
+            showFavExp = plugin.Config.Bind("界面改进", "显示友好度", true, "是否显示各种有关友好度的数值");
         }
 
         void IHook.OnUpdate()
@@ -45,8 +45,8 @@ namespace PathOfWuxia
         static ConfigEntry<Vector3> elementTextPos;
         static ConfigEntry<KeyCode> elementKey;
         static bool elementShow = true;
-
-        static ConfigEntry<bool> thresholdDisplay;
+        static ConfigEntry<bool> showThreshold;
+        static ConfigEntry<bool> showFavExp;
 
         // 1 吃药立即显示属性提升
         [HarmonyPostfix, HarmonyPatch(typeof(PropsUpgradableProperty), "AttachPropsEffect", new Type[] { typeof(CharacterInfoData) })]
@@ -213,7 +213,7 @@ namespace PathOfWuxia
 
         // 7 显示需要多少点一次修炼到10
         const int MAX_STATUS = 5000;
-        internal static int GetThresholdStatus(int begin, int fTarget, Func<int,int> f)
+        internal static int GetThresholdStatus(int begin, int fTarget, Func<int, int> f)
         {
             // binary search
             int lb = begin;
@@ -232,7 +232,7 @@ namespace PathOfWuxia
         [HarmonyPostfix, HarmonyPatch(typeof(CtrlNurturance), "OnOrderSelect", new Type[] { typeof(WGNurturanceBtn) })]
         public static void NurturanceValueDisplay(CtrlNurturance __instance, WGNurturanceBtn btn)
         {
-            if (!thresholdDisplay.Value)
+            if (!showThreshold.Value)
                 return;
             NurturanceOrderTree tree = btn.tree;
             if (tree == null || (tree.Value.Fuction != NurturanceFunction.Skill && tree.Value.Fuction != NurturanceFunction.Mantra))
@@ -289,6 +289,46 @@ namespace PathOfWuxia
                 uiInfo.TipInfos.Insert(2, new TipInfo { type = WGTip.TipType.TitleValue, title = "练满回合数", value = n.ToString() });
                 Instance.Field("view").GetValue<UINurturance>().ShowTip(uiInfo.TipInfos);
             }
+        }
+
+        // 8 Display Relation Ship
+        [HarmonyPostfix, HarmonyPatch(typeof(UIRelationship), "UpdateRelationship", new Type[] { typeof(RelationshipInfo) })]
+        public static void ShowRelationship_UpdateRelationship(UIRelationship __instance, RelationshipInfo _info)
+        {
+            var t = Traverse.Create(__instance);
+            Text expText = Traverse.Create(__instance).Field("expbar").GetValue<Slider>().GetComponentInChildren<Text>();
+            if (expText != null)
+            {
+                UnityEngine.Object.Destroy(expText);
+            }
+            if (showFavExp.Value)
+            {
+                GameObject gameObject = new GameObject("Text");
+                gameObject.transform.SetParent(t.Field("expbar").GetValue<Slider>().transform, false);
+                expText = gameObject.AddComponent<Text>();
+                FavorabilityData favorability = Game.GameData.Community[t.Field("currentId").GetValue<string>()].Favorability;
+                expText.text = favorability.Exp + " / " + favorability.GetMaxExpByLevel(favorability.Level);
+                expText.font = Game.Resource.Load<Font>("Assets/Font/kaiu.ttf");
+                expText.fontSize = 25;
+                expText.alignment = TextAnchor.MiddleLeft;
+                expText.rectTransform.sizeDelta = new Vector2(120f, 40f);
+                expText.transform.localPosition = new Vector3(-5f, 50f, 0f);
+            }
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(Props), "PropsEffectDescription", MethodType.Getter)]
+        public static void ShowRelationship_Props(Props __instance, ref string __result)
+        {
+            if (!showFavExp.Value || __instance.PropsType != PropsType.Present)
+                return;
+            List<string> strFav = new List<string>();
+            foreach (var propsEffect in __instance.PropsEffect)
+            {
+                if (propsEffect is PropsFavorable pf)
+                {
+                    strFav.Add( string.Format("{0}{1}+{2}", Game.GameData.Exterior[pf.Npcid].FullName(), Game.Data.Get<StringTable>("General_Favorability").Text, pf.Value));
+                }
+            }
+            __result += string.Join("，", strFav);
         }
     }
 }
