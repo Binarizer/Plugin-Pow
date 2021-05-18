@@ -26,7 +26,7 @@ namespace PathOfWuxia
             elementTextPos = plugin.Config.Bind("界面改进", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
             elementKey = plugin.Config.Bind("界面改进", "五行显示热键", KeyCode.F3, "战斗时显示五行。调整位置后需开关一次生效");
             showThreshold = plugin.Config.Bind("界面改进", "显示练满所需点数", true, "是否提示n次练满所需相应数值");
-            showFavExp = plugin.Config.Bind("界面改进", "显示友好度", true, "是否显示各种有关友好度的数值");
+            showFavExp = plugin.Config.Bind("界面改进", "显示好感度", true, "在好友界面显示当前好感度 / 总需好感度 在送礼界面显示礼物可提高的好感度");
         }
 
         void IHook.OnUpdate()

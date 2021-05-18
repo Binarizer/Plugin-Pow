@@ -64,7 +64,7 @@ namespace PathOfWuxia
         }
 
         static GameObject TeamMemberObject;         // 队伍图标挂接点
-        static List<UITeamMemberInfo> TeamMembers;
+        static List<GameObject> TeamMembers;
 
         public void OnUpdate()
         {
@@ -180,12 +180,14 @@ namespace PathOfWuxia
             if (TeamMemberObject == null && community != null)
             {
                 TeamMemberObject = new GameObject("Mod_TeamMember");
-                TeamMemberObject.transform.SetParent(community.transform, false);
-                TeamMemberObject.transform.position = new Vector3(1700, 700, 0);
-                TeamMembers = new List<UITeamMemberInfo>();
+                TeamMemberObject.transform.SetParent(UIHome.transform, false);
+                var rt = TeamMemberObject.AddComponent<RectTransform>();
+                rt.pivot = new Vector2(0f, 0.5f);
+                rt.anchorMin = new Vector2(0.57f, 0.9f);
+                rt.anchorMax = new Vector2(0.57f, 0.9f);
+                TeamMembers = new List<GameObject>();
                 GameObject gameObject3 = new GameObject("Mod_TeamMember_Title");
                 gameObject3.transform.SetParent(TeamMemberObject.transform, false);
-                gameObject3.transform.localPosition = new Vector3(-870, 120, 0);
                 var text = gameObject3.AddComponent<Text>();
                 text.font = Game.Resource.Load<Font>("Assets/Font/kaiu.ttf");
                 text.fontSize = 25;
@@ -204,20 +206,24 @@ namespace PathOfWuxia
             {
                 if (TeamMembers.Count <= i)
                 {
-                    var teamUI = Game.UI.Get<UITeamMember>();
-                    var memberUI = Traverse.Create(teamUI).Field("infos").GetValue<List<UITeamMemberInfo>>()[0];
-                    var memberUICopy = GameObject.Instantiate<UITeamMemberInfo>(memberUI, TeamMemberObject.transform, false);
-                    memberUICopy.transform.localPosition = new Vector3(i * 75, -50, 0);
-                    memberUICopy.HP.gameObject.SetActive(false);
-                    memberUICopy.MP.gameObject.SetActive(false);
-                    TeamMembers.Add(memberUICopy);
+                    GameObject gameObjectM = new GameObject("Mask");
+                    var im = gameObjectM.AddComponent<Image>();
+                    gameObjectM.AddComponent<Mask>();
+                    im.rectTransform.sizeDelta = new Vector2(80f, 80f);
+                    im.sprite = Game.Resource.Load<Sprite>("Image/UI/UInurturance/Nurturance_Protrait_mask.png");
+                    gameObjectM.transform.localPosition = new Vector3(84f * i, -60f, 0f);
+                    gameObjectM.transform.SetParent(TeamMemberObject.transform, false);
+                    GameObject gameObject = new GameObject("Portrait");
+                    gameObject.transform.SetParent(gameObjectM.transform, false);
+                    gameObject.AddComponent<Image>();
+                    TeamMembers.Add(gameObject);
                 }
-                TeamMembers[i].gameObject.SetActive(true);
-                TeamMembers[i].UpdateInfo(teamInfos[i]);
+                TeamMembers[i].transform.parent.gameObject.SetActive(true);
+                TeamMembers[i].GetComponent<Image>().sprite = Game.Resource.Load<Sprite>(string.Format(GameConfig.HeadProtraitPath, teamInfos[i].Protrait));
             }
             for (; i < TeamMembers.Count; i++)
             {
-                TeamMembers[i].gameObject.SetActive(false);
+                TeamMembers[i].transform.parent.gameObject.SetActive(false);
             }
         }
 

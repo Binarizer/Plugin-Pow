@@ -14,6 +14,8 @@ using Heluo.Controller;
 using Heluo.Utility;
 using Heluo.Platform;
 using Steamworks;
+using Heluo.FSM.Player;
+using Heluo.Generate;
 
 namespace PathOfWuxia
 {
@@ -31,6 +33,8 @@ namespace PathOfWuxia
         static ConfigEntry<int> saveCount;
         static ConfigEntry<KeyCode> changeAnim;
         static ConfigEntry<KeyCode> changeAnimBack;
+        static ConfigEntry<float> playerScale;
+        static ConfigEntry<float> moveSpeed;
         static ConfigEntry<GameLevel> difficulty;
         static ConfigEntry<ProbablyMode> probablyMode;
         static ConfigEntry<int> probablyValue;
@@ -54,6 +58,14 @@ namespace PathOfWuxia
             speedKey = plugin.Config.Bind("游戏设定", "速度热键", KeyCode.F2, "开关速度调节");
             saveCount = plugin.Config.Bind("游戏设定", "存档数量", 20,
                 new ConfigDescription("存档数量上限", new AcceptableValueRange<int>(20, 100)));
+            playerScale = plugin.Config.Bind("游戏设定", "主角模型尺寸", 1f, 
+                new ConfigDescription("修改主角在自由活动和战斗中的模型尺寸", new AcceptableValueRange<float>(0.75f, 1.5f)));
+            moveSpeed = plugin.Config.Bind("游戏设定", "移动速度", 2.6f, "修改玩家在大地图的移动速度。如果太快可能会穿模");
+            moveSpeed.SettingChanged += (o, e) =>
+            {
+                if (moveSpeed.Value > 0f)
+                    Game.EntityManager.GetComponent<PlayerStateMachine>(GameConfig.Player).forwardRate = moveSpeed.Value;
+            };
             difficulty = plugin.Config.Bind("游戏设定", "难度值", GameLevel.Normal, "调节游戏难度");
             difficulty.SettingChanged += OnGameLevelChange;
             probablyMode = plugin.Config.Bind("游戏设定", "随机事件方式", ProbablyMode.None, "None-原版 SmallChance-小概率事件必发生 FixedRandomValue-设定产生的随机数");
@@ -101,9 +113,21 @@ namespace PathOfWuxia
                 }
             }
 
-            // sync difficulty
-            if (Game.GameData.GameLevel != difficulty.Value)
-                difficulty.Value = Game.GameData.GameLevel;
+            // sync settings
+            var psm = Game.EntityManager.GetComponent<PlayerStateMachine>(GameConfig.Player);
+            if (psm != null)
+            {
+                GameObject playerModel = Traverse.Create(psm).Property("ObjectComponent")?.Property("Model")?.GetValue<GameObject>();
+                if (playerModel != null)
+                    playerModel.transform.localScale = Vector3.one * playerScale.Value;
+                moveSpeed.Value = psm.forwardRate;
+            }
+            var playerInBattle = Game.BattleStateMachine?.BattleManager?.UnitGenerator[GameConfig.Player];
+            if (playerInBattle != null)
+            {
+                playerInBattle.transform.localScale = Vector3.one * playerScale.Value;
+            }
+            difficulty.Value = Game.GameData.GameLevel;
         }
 
         static void OnGameLevelChange(object o, EventArgs e)
@@ -241,7 +265,7 @@ namespace PathOfWuxia
         }
 
         // 6 存档数量上限
-        [HarmonyPrefix, HarmonyPatch(typeof(SteamPlatform), "ListSaveHeaderFile", new Type[]{ typeof(GameSaveType) } )]
+        [HarmonyPrefix, HarmonyPatch(typeof(SteamPlatform), "ListSaveHeaderFile", new Type[] { typeof(GameSaveType) })]
         public static bool SaveCountPatch_ListSaveHeaderFile(SteamPlatform __instance, GameSaveType Type, ref List<PathOfWuxiaSaveHeader> __result)
         {
             if (Type == GameSaveType.Manual)
