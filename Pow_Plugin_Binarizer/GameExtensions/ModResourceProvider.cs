@@ -93,7 +93,7 @@ namespace PathOfWuxia
                     WWW www = new WWW(fullPath);
                     if (www.error != null)
                     {
-                        Debug.LogError("www " + www.error);
+                        Console.WriteLine("www " + www.error);
                         return default(T);
                     }
                     while (!www.isDone)
@@ -102,7 +102,7 @@ namespace PathOfWuxia
                     AudioClip audioClip = www.GetAudioClip();
                     if (audioClip == null)
                     {
-                        Debug.LogError("Failed!! file://" + fullPath);
+                        Console.WriteLine("Failed!! file://" + fullPath);
                         return default(T);
                     }
                     audioClip.LoadAudioData();
@@ -164,7 +164,7 @@ namespace PathOfWuxia
             {
                 if (crcCalculatorStream.Read(array, 0, array.Length) != array.Length)
                 {
-                    Heluo.Logger.LogError("Zip file size not equal !! " + zipEntry.FileName, "GetDataFromZip", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Resource\\Provider\\ExternalResourceProvider.cs", 119);
+                    Console.WriteLine("Zip file size not equal !! " + zipEntry.FileName, "GetDataFromZip", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Resource\\Provider\\ExternalResourceProvider.cs", 119);
                 }
             }
             return array;

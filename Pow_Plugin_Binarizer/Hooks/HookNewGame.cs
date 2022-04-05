@@ -9,6 +9,7 @@ using Heluo.UI;
 using Heluo.Data;
 using Heluo.Flow;
 using Heluo.Utility;
+using Heluo.Features;
 
 namespace PathOfWuxia
 {
@@ -17,16 +18,41 @@ namespace PathOfWuxia
     {
         public void OnRegister(PluginBinarizer plugin)
         {
-            newGameAttributePoint = plugin.Config.Bind("开局设定", "属性点", 50, "设置开局属性点");
-            newGameTraitPoint = plugin.Config.Bind("开局设定", "特性点", 1, "设置开局特性点");
-            newGameExteriorId = plugin.Config.Bind("开局设定", "主角建模", string.Empty, "设定新开局时的主角建模数据源，请通过CharacterExterior表格查找，使用第一列ID");
-            newGamePortraitOverride = plugin.Config.Bind("开局设定", "主角头像", string.Empty, "若已设置建模，则可为空，使用建模的头像，否则用此头像代替");
+            newGameAttributePoint = plugin.Config.Bind("开局设定", "增加属性点", 0, "设置开局增加多少属性点");
+            newGameTraitPoint = plugin.Config.Bind("开局设定", "增加特性点", 0, "设置开局增加多少特性点");
+            newGameExteriorId = plugin.Config.Bind("角色设定", "主角建模", string.Empty, "设定主角建模数据源");
+            newGamePortraitOverride = plugin.Config.Bind("角色设定", "主角头像", string.Empty, "若已设置建模，则可为空，使用建模的头像，否则用此头像代替");
+            newGameSurNameOverride = plugin.Config.Bind("角色设定", "主角姓", "亦", "可修改主角的姓");
+            newGameNameOverride = plugin.Config.Bind("角色设定", "主角名", "天凛", "可修改主角的名");
+
+            ReplacePlayerExteriorDataEventHander += new EventHandler((o, e) =>
+            {
+                ReplacePlayerExteriorData();
+            });
+
+            newGameExteriorId.SettingChanged += ReplacePlayerExteriorDataEventHander;
+            newGamePortraitOverride.SettingChanged += ReplacePlayerExteriorDataEventHander;
+            newGameSurNameOverride.SettingChanged += ReplacePlayerExteriorDataEventHander;
+            newGameNameOverride.SettingChanged += ReplacePlayerExteriorDataEventHander;
         }
 
         static ConfigEntry<int> newGameAttributePoint;
         static ConfigEntry<int> newGameTraitPoint;
         static ConfigEntry<string> newGameExteriorId;
         static ConfigEntry<string> newGamePortraitOverride;
+        static ConfigEntry<string> newGameSurNameOverride;
+        static ConfigEntry<string> newGameNameOverride;
+        static EventHandler ReplacePlayerExteriorDataEventHander;
+
+        // 1 可选多个特性
+        //[HarmonyTranspiler]
+        //[HarmonyPatch(typeof(CtrlRegistration), "OnTraitClick")]
+        //public static IEnumerable<CodeInstruction> StartPatch_UnlockTraitCount(IEnumerable<CodeInstruction> instructions)
+        //{
+        //    var codes = instructions.ToList();
+        //    codes[47].opcode = OpCodes.Ldc_I4_M1;   // 原本为Ldc_I4_2
+        //    return codes.AsEnumerable();
+        //}
 
         // 2 纪录开局数据
         private static Dictionary<CharacterUpgradableProperty, int> newAttributeValues;  // +
@@ -57,12 +83,12 @@ namespace PathOfWuxia
 
             var Tpoint = Traverse.Create(__instance).Field("point");
             int attrPoint = Tpoint.GetValue<int>();
-            dicePoint = newGameAttributePoint.Value + attrPoint - 50;
+            dicePoint = newGameAttributePoint.Value + attrPoint;
             Tpoint.SetValue(dicePoint);
 
             var Tpoint2 = Traverse.Create(__instance).Field("traitPoint");
             int traitPoint = Tpoint2.GetValue<int>();
-            Tpoint2.SetValue(newGameTraitPoint.Value + traitPoint - 1);
+            Tpoint2.SetValue(newGameTraitPoint.Value + traitPoint);
         }
 
         // 3 新随机方法
@@ -132,33 +158,66 @@ namespace PathOfWuxia
             return false;
         }
 
-        // 4 头像模型替换
+        // 4 头像模型名称性别替换
         public static void ReplacePlayerExteriorData()
         {
-            CharacterExteriorData playerExteriorData = Game.GameData.Exterior[GameConfig.Player];
-            if (playerExteriorData != null && newGameExteriorId.Value != string.Empty)
+            Console.WriteLine("ReplacePlayerExteriorData start");
+            string[] characters = new string[] { GameConfig.Player , "in0196", "in0197", "in0101", "in0115" };
+            for(int i = 0;i < characters.Length; i++)
             {
-                CharacterExterior characterExterior = Game.Data.Get<CharacterExterior>(newGameExteriorId.Value);
-                if (characterExterior != null)
+                CharacterExteriorData playerExteriorData = Game.GameData.Exterior[characters[i]];
+                if (playerExteriorData != null && !newGameExteriorId.Value.Trim().IsNullOrEmpty())
                 {
-                    CharacterExterior exterior = Game.Data.Get<CharacterExterior>(playerExteriorData.Id);
-                    playerExteriorData.Id = exterior.Id = characterExterior.Id;
-                    playerExteriorData.Model = exterior.Model = characterExterior.Model;
-                    playerExteriorData.Gender = exterior.Gender = characterExterior.Gender;
-                    playerExteriorData.Size = exterior.Size = characterExterior.Size;
-                    playerExteriorData.Protrait = exterior.Protrait = newGamePortraitOverride.Value.IsNullOrEmpty() ? characterExterior.Protrait : newGamePortraitOverride.Value;
+                    foreach(KeyValuePair<string,CharacterExterior> kv in Game.Data.Get<CharacterExterior>())
+                    {
+                        if (kv.Value.Model == newGameExteriorId.Value.Trim())
+                        {
+                            playerExteriorData.Id = kv.Value.Id;
+                            playerExteriorData.Model = kv.Value.Model;
+                            playerExteriorData.Gender = kv.Value.Gender;
+                            playerExteriorData.Size = kv.Value.Size;
+                            playerExteriorData.Protrait = kv.Value.Protrait;
+                        }
+                    }
+                }
+                if (!newGamePortraitOverride.Value.Trim().IsNullOrEmpty())
+                {
+                    foreach (KeyValuePair<string, CharacterExterior> kv in Game.Data.Get<CharacterExterior>())
+                    {
+                        if (kv.Value.Protrait == newGamePortraitOverride.Value.Trim())
+                        {
+                            playerExteriorData.Protrait = kv.Value.Protrait;
+                        }
+                    }
+                }
+                if (!newGameSurNameOverride.Value.Trim().IsNullOrEmpty())
+                {
+                    playerExteriorData.SurName = newGameSurNameOverride.Value.Trim();
+                }
+                if (!newGameNameOverride.Value.Trim().IsNullOrEmpty())
+                {
+                    playerExteriorData.Name = newGameNameOverride.Value.Trim();
                 }
             }
+            Console.WriteLine("ReplacePlayerExteriorData end");
         }
-        [HarmonyPostfix, HarmonyPatch(typeof(CtrlRegistration), "InitialRewards")]
-        public static void StartPatch_SetPlayerModel()
+        //EnterGame之后会直接开始游戏，创建playerEntity，之后再执行InitialRewards。在InitialRewards后再替换模型就晚了一些
+        [HarmonyPrefix, HarmonyPatch(typeof(UIRegistration), "EnterGame")]
+        public static bool StartPatch_SetPlayerModel()
         {
             ReplacePlayerExteriorData();
+            return true;
+        }
+        [HarmonyPrefix, HarmonyPatch(typeof(PlayerTemplate), "BuildEntity")]
+        public static bool PlayerTemplatePatch_BuildEntity()
+        {
+            ReplacePlayerExteriorData();
+            return true;
         }
         [HarmonyPostfix, HarmonyPatch(typeof(ChangeCharacterProtraitAndModel), "GetValue")]
         public static void StartPatch_SetPlayerModel2(ChangeCharacterProtraitAndModel __instance, bool __result)
         {
-            if (__instance.id == GameConfig.Player && __result)
+            if (__instance.id == GameConfig.Player)
             {
                 ReplacePlayerExteriorData();
             }
@@ -170,6 +229,49 @@ namespace PathOfWuxia
             {
                 ReplacePlayerExteriorData();
             }
+        }
+
+        /*[HarmonyPrefix, HarmonyPatch(typeof(UIRegistration), "UpdateView")]
+        public static bool UIRegistrationPatch_UpdateView(UIRegistration __instance, ref RegistrationInfo _info)
+        {
+            _info.SurName = newGameSurNameOverride.Value.IsNullOrEmpty()? "亦": newGameSurNameOverride.Value;
+            _info.Name = newGameNameOverride.Value.IsNullOrEmpty() ? "天凛" : newGameNameOverride.Value;
+            return true;
+        }
+
+        [HarmonyPrefix, HarmonyPatch(typeof(UIRegistration), "UpdateName")]
+        public static bool UIRegistrationPatch_UpdateName(UIRegistration __instance, ref string surName, ref string Name)
+        {
+            surName = newGameSurNameOverride.Value;
+            Name = newGameNameOverride.Value;
+            return true;
+        }*/
+
+        [HarmonyPostfix, HarmonyPatch(typeof(GameData), "Initialize")]
+        public static void GameDataPatch_Initialize(GameData __instance)
+        {
+            Console.WriteLine("SteamPlatformPatch_LoadFileAsync start"); 
+            newGameSurNameOverride.SettingChanged -= ReplacePlayerExteriorDataEventHander;
+            newGameNameOverride.SettingChanged -= ReplacePlayerExteriorDataEventHander;
+
+            newGameSurNameOverride.Value = __instance.Exterior["Player"].SurName;
+            newGameNameOverride.Value = __instance.Exterior["Player"].Name;
+
+            newGameSurNameOverride.SettingChanged += ReplacePlayerExteriorDataEventHander;
+            newGameNameOverride.SettingChanged += ReplacePlayerExteriorDataEventHander;
+            Console.WriteLine("SteamPlatformPatch_LoadFileAsync end");
+        }
+
+        [HarmonyPostfix, HarmonyPatch(typeof(CtrlRegistration), "SetLastName")]
+        public static void CtrlRegistrationPatch_SetLastName(CtrlRegistration __instance,ref string value)
+        {
+            newGameSurNameOverride.Value = value;
+        }
+
+        [HarmonyPostfix, HarmonyPatch(typeof(CtrlRegistration), "SetFitstName")]
+        public static void CtrlRegistrationPatch_SetFitstName(CtrlRegistration __instance, ref string value)
+        {
+            newGameNameOverride.Value = value;
         }
 
         // 5 防止人物模型动作出现问题

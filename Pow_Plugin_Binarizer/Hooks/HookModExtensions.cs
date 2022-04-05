@@ -469,7 +469,7 @@ namespace PathOfWuxia
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError(string.Format("AddUnit失败： id={0} faction={1} tile={2} isparty={3} error={4}，再次尝试", new object[]
+                    Console.WriteLine(string.Format("AddUnit失败： id={0} faction={1} tile={2} isparty={3} error={4}，再次尝试", new object[]
                     {
                         unitid,
                         faction,
@@ -483,7 +483,7 @@ namespace PathOfWuxia
             }
             if (result == null)
             {
-                UnityEngine.Debug.LogError("尝试10次无果，请彻查地图格子设置");
+                Console.WriteLine("尝试10次无果，请彻查地图格子设置");
             }
             __result = result;
             return false;
@@ -580,8 +580,8 @@ namespace PathOfWuxia
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError(e);
-                    Debug.LogError("解析Json错误" + str);
+                    Console.WriteLine(e);
+                    Console.WriteLine("解析Json错误" + str);
                     throw;
                 }
                 return false;
@@ -595,7 +595,7 @@ namespace PathOfWuxia
             // 取消Dictionary Cache，性能不太可能有问题
             if (string.IsNullOrEmpty(path))
             {
-                Heluo.Logger.Log("排程为空", Heluo.Logger.LogLevel.ERROR, "white", "GetScheduleGraph", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Features\\SchedulerComponent.cs", 162);
+                Console.WriteLine("排程为空", Heluo.Logger.LogLevel.ERROR, "white", "GetScheduleGraph", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Features\\SchedulerComponent.cs", 162);
                 __result = null;
                 return false;
             }
@@ -606,7 +606,7 @@ namespace PathOfWuxia
             }
             catch
             {
-                Heluo.Logger.Log("Path = " + path + " 解析失败", Heluo.Logger.LogLevel.ERROR, "white", "GetScheduleGraph", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Features\\SchedulerComponent.cs", 162);
+                Console.WriteLine("Path = " + path + " 解析失败", Heluo.Logger.LogLevel.ERROR, "white", "GetScheduleGraph", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Features\\SchedulerComponent.cs", 162);
                 __result = null;
             }
             return false;
@@ -632,13 +632,13 @@ namespace PathOfWuxia
                     battleSchedule.Remark = bundle.Remark;
                     battleSchedule.WinTip = bundle.WinTip;
                     battleSchedule.LoseTip = bundle.LoseTip;
-                    Debug.Log($"战斗：id={bundle.Id}, Name={bundle.Name}");
+                    Console.WriteLine($"战斗：id={bundle.Id}, Name={bundle.Name}");
                     Traverse.Create(__instance).Property("BattleSchedule").SetValue(battleSchedule);
                     Traverse.Create(__instance).Method("CreateBattleSchedules", battleRootNode, bundle).GetValue();
                 }
                 catch
                 {
-                    Debug.Log("無法Mod讀取,换原版 : " + path);
+                    Console.WriteLine("無法Mod讀取,换原版 : " + path);
                     return true;
                 }
             }
@@ -651,7 +651,7 @@ namespace PathOfWuxia
         {
             if (bufferId.IsNullOrEmpty())
             {
-                Heluo.Logger.LogError("要附加的BufferId是空值", "AddBuffer", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Battle\\WuxiaBattleBuffer.cs", 119);
+                Console.WriteLine("要附加的BufferId是空值", "AddBuffer", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Battle\\WuxiaBattleBuffer.cs", 119);
                 return false;
             }
             try
@@ -662,7 +662,7 @@ namespace PathOfWuxia
             }
             catch
             {
-                Heluo.Logger.LogError("附加Buffer : " + bufferId + " 失敗", "AddBuffer", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Battle\\WuxiaBattleBuffer.cs", 135);
+                Console.WriteLine("附加Buffer : " + bufferId + " 失敗", "AddBuffer", "C:\\PathOfWuxia\\PathOfWuxia\\Assets\\Scripts\\Battle\\WuxiaBattleBuffer.cs", 135);
             }
             return false;
         }

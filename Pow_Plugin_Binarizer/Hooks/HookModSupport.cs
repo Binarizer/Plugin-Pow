@@ -7,7 +7,6 @@ using System.Text;
 using System.Timers;
 using HarmonyLib;
 using UnityEngine;
-using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
@@ -45,7 +44,7 @@ namespace PathOfWuxia
         }
         static private void BindSubConfig()
         {
-            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
+            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", string.Empty, "下次进入主菜单生效");
             modCustomVoice = Plugin.Config.Bind("Mod设置", "Mod语音开关", false, "配音开关");
         }
 
@@ -185,7 +184,7 @@ namespace PathOfWuxia
                         else
                         {
                             // 没有对应文件
-                            Debug.Log("没找到该类型的数据：" + itemType.ToString());
+                            Console.WriteLine("没找到该类型的数据：" + itemType.ToString());
                             continue;
                         }
                     }
@@ -193,7 +192,7 @@ namespace PathOfWuxia
                 }
                 catch (ConvertException ex)
                 {
-                    Debug.LogError(string.Concat(new object[]
+                    Console.WriteLine(string.Concat(new object[]
                     {
                         "解析 ",
                         itemType.Name,
@@ -211,7 +210,7 @@ namespace PathOfWuxia
                 }
                 catch (Exception ex2)
                 {
-                    Debug.LogError(string.Concat(new object[]
+                    Console.WriteLine(string.Concat(new object[]
                     {
                         "解析 ",
                         itemType.Name,
@@ -392,7 +391,7 @@ namespace PathOfWuxia
             }
             else
             {
-                Debug.Log("沒有包到這個路徑的檔案:" + text);
+                Console.WriteLine("沒有包到這個路徑的檔案:" + text);
                 __result = null;
             }
             return false;

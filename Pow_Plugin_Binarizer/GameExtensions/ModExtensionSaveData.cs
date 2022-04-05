@@ -45,13 +45,13 @@ namespace PathOfWuxia
                 item.Id = GetNextUniqueId(item.Id);
             }
             while (dic.ContainsKey(item.Id));
-            Debug.Log("Try Add Unique Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
+            Console.WriteLine("Try Add Unique Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
             dic.Add(item.Id, item);
         }
         public static void RemoveUniqueItem<T>(string id) where T : Item
         {
             Dictionary<string, T> dic = Instance.GetUniqueDictionary<T>();
-            Debug.Log("Try Remove Unique Item: " + id);
+            Console.WriteLine("Try Remove Unique Item: " + id);
             dic.Remove(id);
         }
 
@@ -72,13 +72,13 @@ namespace PathOfWuxia
                 item.Id = GetNextTempId(item.Id);
             }
             while (dic.ContainsKey(item.Id));
-            Debug.Log("Try Add Temp Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
+            Console.WriteLine("Try Add Temp Item: " + LZ4MessagePackSerializer.ToJson<T>(item, HeluoResolver.Instance));
             dic.Add(item.Id, item);
         }
         public static void RemoveTempItem<T>(string id) where T : Item
         {
             Dictionary<string, T> dic = Instance.GetTempDictionary<T>();
-            Debug.Log("Try Remove Temp Item: " + id);
+            Console.WriteLine("Try Remove Temp Item: " + id);
             dic.Remove(id);
         }
 

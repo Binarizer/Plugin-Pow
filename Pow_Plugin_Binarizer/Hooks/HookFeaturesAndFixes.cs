@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using HarmonyLib;
-using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
@@ -18,11 +17,9 @@ namespace PathOfWuxia
     {
         public void OnRegister(PluginBinarizer plugin)
         {
-            //elementPos = plugin.Config.Bind("界面改进", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
             elementTextPos = plugin.Config.Bind("界面改进", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
-            elementKey = plugin.Config.Bind("界面改进", "五行显示热键", KeyCode.F3, "战斗时显示名字。调整位置后需开关一次生效");
+            elementKey = plugin.Config.Bind("界面改进", "名字显示热键", KeyCode.F3, "战斗时显示名字。调整位置后需开关一次生效");
             showThreshold = plugin.Config.Bind("界面改进", "显示练满所需点数", true, "是否提示n次练满所需相应数值");
-            showFavExp = plugin.Config.Bind("界面改进", "显示好感度", true, "在好友界面显示当前好感度 / 总需好感度 在送礼界面显示礼物可提高的好感度");
 
             plugin.onUpdate += OnUpdate;
         }
@@ -39,12 +36,10 @@ namespace PathOfWuxia
             }
         }
 
-        //static ConfigEntry<Vector3> elementPos;
         static ConfigEntry<Vector3> elementTextPos;
         static ConfigEntry<KeyCode> elementKey;
         static bool elementShow = true;
         static ConfigEntry<bool> showThreshold;
-        static ConfigEntry<bool> showFavExp;
 
         // 1 吃药立即显示属性提升
         [HarmonyPostfix, HarmonyPatch(typeof(PropsUpgradableProperty), "AttachPropsEffect", new Type[] { typeof(CharacterInfoData) })]
@@ -120,20 +115,12 @@ namespace PathOfWuxia
         // 5 血条显示五行(新版已有，废除之)
         public static void ProcessElementDisplay(WgBar wgbar)
         {
-            //Image element;
             Text name;
             Slider hp = Traverse.Create(wgbar).Field("hp").GetValue<Slider>();
             var trans = hp.transform.Find("ElementImage");
             var trans2 = hp.transform.Find("UnitName");
             if (trans == null && wgbar.Unit != null)
             {
-                //GameObject gameObject = new GameObject("ElementImage");
-                //gameObject.transform.SetParent(hp.transform, false);
-                //element = gameObject.AddComponent<Image>();
-                //element.rectTransform.sizeDelta = new Vector2(50f, 50f);
-                //element.color = new Color(1f, 1f, 1f, 0.8f);
-                //element.transform.localPosition = elementPos.Value;
-                //element.sprite = Game.Resource.Load<Sprite>(string.Format(GameConfig.ElementPath, wgbar.Unit.Element));
                 GameObject gameObject2 = new GameObject("UnitName");
                 gameObject2.transform.SetParent(hp.transform, false);
                 name = gameObject2.AddComponent<Text>();
@@ -146,19 +133,15 @@ namespace PathOfWuxia
             }
             else
             {
-                //element = trans.gameObject.GetComponent<Image>();
                 name = trans2.gameObject.GetComponent<Text>();
             }
             if (elementShow)
             {
-                //element.gameObject.SetActive(true);
-                //element.transform.localPosition = elementPos.Value;
                 name.gameObject.SetActive(true);
                 name.transform.localPosition = elementTextPos.Value;
             }
             else
             {
-                //element.gameObject.SetActive(false);
                 name.gameObject.SetActive(false);
             }
         }
@@ -287,53 +270,6 @@ namespace PathOfWuxia
             {
                 uiInfo.TipInfos.Insert(2, new TipInfo { type = WGTip.TipType.TitleValue, title = "练满回合数", value = n.ToString() });
                 Instance.Field("view").GetValue<UINurturance>().ShowTip(uiInfo.TipInfos);
-            }
-        }
-
-        // 8 Display Relation Ship
-        [HarmonyPostfix, HarmonyPatch(typeof(UIRelationship), "UpdateRelationship", new Type[] { typeof(RelationshipInfo) })]
-        public static void ShowRelationship_UpdateRelationship(UIRelationship __instance, RelationshipInfo _info)
-        {
-            var t = Traverse.Create(__instance);
-            Text expText = Traverse.Create(__instance).Field("expbar").GetValue<Slider>().GetComponentInChildren<Text>();
-            if (expText != null)
-            {
-                UnityEngine.Object.Destroy(expText);
-            }
-            if (showFavExp.Value)
-            {
-                GameObject gameObject = new GameObject("Text");
-                gameObject.transform.SetParent(t.Field("expbar").GetValue<Slider>().transform, false);
-                expText = gameObject.AddComponent<Text>();
-                FavorabilityData favorability = Game.GameData.Community[t.Field("currentId").GetValue<string>()].Favorability;
-                expText.text = favorability.Exp + " / " + favorability.GetMaxExpByLevel(favorability.Level);
-                expText.font = Game.Resource.Load<Font>("Assets/Font/kaiu.ttf");
-                expText.fontSize = 25;
-                expText.alignment = TextAnchor.MiddleLeft;
-                expText.rectTransform.sizeDelta = new Vector2(120f, 40f);
-                expText.transform.localPosition = new Vector3(-5f, 52f, 0f);
-            }
-        }
-        [HarmonyPostfix, HarmonyPatch(typeof(Props), "PropsEffectDescription", MethodType.Getter)]
-        public static void ShowRelationship_Props(Props __instance, ref string __result)
-        {
-            try
-            {
-                if (!showFavExp.Value || __instance.PropsType != PropsType.Present)
-                    return;
-                var strFav = new List<string>();
-                foreach (var propsEffect in __instance.PropsEffect)
-                {
-                    if (propsEffect != null && propsEffect is PropsFavorable pf)
-                    {
-                        strFav.Add($"{Game.GameData.Exterior[pf.Npcid]?.FullName()}{Game.Data.Get<StringTable>("General_Favorability").Text}+{pf.Value}");
-                    }
-                }
-                __result += string.Join("，", strFav);
-            }
-            catch
-            {
-                Console.WriteLine($"道具有问题，{__instance.Name}");
             }
         }
     }

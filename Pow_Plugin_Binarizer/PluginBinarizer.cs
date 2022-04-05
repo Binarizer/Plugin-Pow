@@ -8,22 +8,36 @@ using System.Linq;
 
 namespace PathOfWuxia
 {
-    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.3")]
+    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer，修改 by 寻宇", "2.0")]
     public class PluginBinarizer : BaseUnityPlugin
     {
         /// <summary>
-        /// 加载
+        /// 加载模块
         /// </summary>
-        void RegisterHook(IHook hook)
+        void RegisterHook(Type hookType)
         {
-            hook.OnRegister(this);
-            Harmony.CreateAndPatchAll(hook.GetType()); 
-            Console.WriteLine("Patch " + hook.GetType().Name);
-            hooks.Add(hook);
+            try
+            {
+                if (Activator.CreateInstance(hookType) is IHook hook)
+                {
+                    hook.OnRegister(this);
+                    Harmony.CreateAndPatchAll(hook.GetType());
+                    hooks.Add(hook);
+                    Console.WriteLine($"加载该模块成功！");
+                }
+                else
+                {
+                    Console.WriteLine($"加载该模块失败！");
+                }
+            }
+            catch
+            {
+                Console.WriteLine($"加载该模块失败！");
+            }
         }
 
         /// <summary>
-        /// 卸载，还没搞懂，先重启吧
+        /// 卸载模块，还没搞懂，先重启吧
         /// </summary>
         void UnregisterHook(IHook hook)
         {
@@ -38,7 +52,7 @@ namespace PathOfWuxia
         public Action onUpdate;
 
         /// <summary>
-        /// 注册各模块的钩子
+        /// 注册各模块
         /// </summary>
         void Awake()
         {
@@ -46,19 +60,27 @@ namespace PathOfWuxia
             Assembly assembly = Assembly.GetExecutingAssembly();
             Console.WriteLine($"当前程序：{assembly.FullName}");
             var hookTypes = from t in assembly.GetTypes() where typeof(IHook).IsAssignableFrom(t) && !t.IsAbstract select t;
-            Console.WriteLine("美好的初始化开始，统计钩子模块");
+            Console.WriteLine("美好的初始化开始，统计模块");
             foreach (var hookType in hookTypes)
             {
-                Console.WriteLine($"计入模块 [{hookType.Name}]");
+                Console.WriteLine($"统计模块 [{hookType.Name}]");
                 moduleEntries[hookType] = Config.Bind("模块选择", hookType.Name, false, adv1);
             }
-
+            Console.WriteLine($"可注册模块共计{moduleEntries.Count}个");
             foreach (var modulePair in moduleEntries)
             {
+                if (modulePair.Value == null)
+                {
+                    Console.WriteLine($"设置加载失败!{modulePair.Key.Name}");
+                    continue;
+                }
                 if (modulePair.Value.Value)
-                    RegisterHook(Activator.CreateInstance(modulePair.Key) as IHook);
+                {
+                    Console.WriteLine($"加载模块 [{ modulePair.Key.Name}]");
+                    RegisterHook(modulePair.Key);
+                }
             }
-            Console.WriteLine($"可注册钩子模块共计{moduleEntries.Count}个");
+            Console.WriteLine($"加载模块生效{hooks.Count}个");
         }
 
         void Start()

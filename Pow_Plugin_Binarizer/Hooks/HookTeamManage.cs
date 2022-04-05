@@ -284,5 +284,31 @@ namespace PathOfWuxia
             __result = array;
             return false;
         }
+
+        [HarmonyPrefix, HarmonyPatch(typeof(CtrlAdjustment), "CloseAdjustment")]
+        public static bool CtrlAdjustmentFix_CloseAdjustment(CtrlAdjustment __instance)
+        {
+            if (teamManageOn.Value)
+            {
+                List<AdjustProtraitBtnInfo> AdjustProtraitInfos = Traverse.Create(__instance).Field("AdjustProtraitInfos").GetValue<List<AdjustProtraitBtnInfo>>();
+                for (int i = 0; i < AdjustProtraitInfos.Count; i++)
+                {
+                    AdjustProtraitBtnInfo adjustProtraitBtnInfo = AdjustProtraitInfos[i];
+                    if (!adjustProtraitBtnInfo.Id.IsNullOrEmpty() && !Game.GameData.Party.Contains(adjustProtraitBtnInfo.Id))
+                    {
+                        Game.GameData.Party.AddParty(adjustProtraitBtnInfo.Id, adjustProtraitBtnInfo.IsMust);
+                    }
+                }
+                UIAdjustment view = Traverse.Create(__instance).Field("view").GetValue<UIAdjustment>();
+                view.Hide();
+                Adjustment adjustment = Traverse.Create(__instance).Field("adjustment").GetValue<Adjustment>();
+                new RunCinematicAction
+                {
+                    cinematicId = adjustment.CinematicId
+                }.GetValue();
+                return false;
+            }
+            return true;
+        }
     }
 }
