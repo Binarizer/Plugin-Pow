@@ -21,42 +21,28 @@ namespace PathOfWuxia
     // Mod辅助扩展
     public class HookModExtensions : IHook
     {
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            return new Type[] { GetType() };
-        }
-        static private BaseUnityPlugin Plugin = null;
 
-        public void OnRegister(BaseUnityPlugin plugin)
+        public void OnRegister(PluginBinarizer plugin)
         {
-            Plugin = plugin;
             ExtDrop = plugin.Config.Bind("扩展功能", "战场掉落", false, "特定关卡敌方掉落，游玩剑击江湖请勾选");
             var adv = new ConfigDescription("", null, new ConfigurationManagerAttributes { IsAdvanced = true });
-            DropRateCharacter = Plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, adv);
-            DropRateSkillMantra = Plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, adv);
-            DropRateEquip = Plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, adv);
+            DropRateCharacter = plugin.Config.Bind("扩展功能", "战场掉落率（人物）", 0.02f, adv);
+            DropRateSkillMantra = plugin.Config.Bind("扩展功能", "战场掉落率（秘籍）", 0.04f, adv);
+            DropRateEquip = plugin.Config.Bind("扩展功能", "战场掉落率（装备）", 0.05f, adv);
         }
         private static ConfigEntry<bool> ExtDrop;
         private static ConfigEntry<float> DropRateCharacter;
         private static ConfigEntry<float> DropRateSkillMantra;
         private static ConfigEntry<float> DropRateEquip;
 
-        static private void BindSubConfig()
-        {
-        }
-
-        public void OnUpdate()
-        {
-        }
-
         static List<BattleDropProp> ExtDrops = new List<BattleDropProp>();
 
-        // 1 多重召唤
+        // 1 多重召唤 暂时取消
         [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleManager), "InitBattle", new Type[] { typeof(Heluo.FSM.Battle.BattleStateMachine), typeof(string), typeof(IDataProvider), typeof(IResourceProvider), typeof(Action<BillboardArg>) })]
         public static void ModExt_InitBattle(WuxiaBattleManager __instance, IDataProvider data, IResourceProvider resource)
         {
             // 整体替换 SummonProcessStrategy 类
-            Traverse.Create(__instance).Field("summonProcess").SetValue(new ModSummonProcessStrategy(__instance, data, resource));
+            //Traverse.Create(__instance).Field("summonProcess").SetValue(new ModSummonProcessStrategy(__instance, data, resource));
             // 清空自定义战场奖励
             ExtDrops.Clear();
         }
@@ -634,11 +620,26 @@ namespace PathOfWuxia
                 string path = string.Format(GameConfig.BattleSchedulePath, GameConfig.Language, ScheduleID + ".json");
                 try
                 {
-                    Traverse.Create(__instance).Property("BattleSchedule").SetValue(ModJson.FromJsonResource<BattleSchedule>(path, true));
+                    BattleScheduleBundle bundle = ModJson.FromJsonResource<BattleScheduleBundle>(path, true);
+                    BattleSchedule battleSchedule = new BattleSchedule();
+                    Heluo.Flow.Battle.BattleRootNode battleRootNode = new Heluo.Flow.Battle.BattleRootNode();
+                    battleSchedule.Id = bundle.Id;
+                    battleSchedule.Name = bundle.Name;
+                    battleSchedule.BattleSchedules = new Heluo.Flow.Battle.BattleBehaviourGraph
+                    {
+                        Output = battleRootNode
+                    };
+                    battleSchedule.Remark = bundle.Remark;
+                    battleSchedule.WinTip = bundle.WinTip;
+                    battleSchedule.LoseTip = bundle.LoseTip;
+                    Debug.Log($"战斗：id={bundle.Id}, Name={bundle.Name}");
+                    Traverse.Create(__instance).Property("BattleSchedule").SetValue(battleSchedule);
+                    Traverse.Create(__instance).Method("CreateBattleSchedules", battleRootNode, bundle).GetValue();
                 }
                 catch
                 {
-                    Debug.Log("無法讀取 : " + path);
+                    Debug.Log("無法Mod讀取,换原版 : " + path);
+                    return true;
                 }
             }
             ScheduleID = null;  //skip original load

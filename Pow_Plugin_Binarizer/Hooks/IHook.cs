@@ -6,10 +6,8 @@ namespace PathOfWuxia
 {
     interface IHook
     {
-        IEnumerable<Type> GetRegisterTypes();
+        void OnRegister(PluginBinarizer plugin);
 
-        void OnRegister(BaseUnityPlugin plugin);
-
-        void OnUpdate();
+        //void OnUnregister(PluginBinarizer plugin);
     }
 }

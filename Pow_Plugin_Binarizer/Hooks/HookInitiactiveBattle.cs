@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
@@ -22,14 +21,12 @@ namespace PathOfWuxia
     // 半即时战斗
     public class HookInitiactiveBattle : IHook
     {
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            return new Type[] { GetType() };
-        }
-        public void OnRegister(BaseUnityPlugin plugin)
+        public void OnRegister(PluginBinarizer plugin)
         {
             initiactiveBattle = plugin.Config.Bind("战斗模式", "半即时战斗", false, "开关时序制半即时战斗系统");
             autoBattle = plugin.Config.Bind("战斗模式", "自动战斗", false, "我方自动战斗，重开战斗生效");
+
+            plugin.onUpdate += OnUpdate;
         }
 
         public void OnUpdate()

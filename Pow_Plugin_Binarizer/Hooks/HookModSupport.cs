@@ -26,13 +26,9 @@ namespace PathOfWuxia
     // 多Mod支持
     public class HookModSupport : IHook
     {
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            return new Type[] { GetType() };
-        }
-        static private BaseUnityPlugin Plugin = null;
+        static private PluginBinarizer Plugin = null;
 
-        public void OnRegister(BaseUnityPlugin plugin)
+        public void OnRegister(PluginBinarizer plugin)
         {
             Plugin = plugin;
             modBasePath = plugin.Config.Bind("Mod设置", "Mod总路径", "Mods\\", new ConfigDescription("Mod主目录", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 3 }));
@@ -49,12 +45,8 @@ namespace PathOfWuxia
         }
         static private void BindSubConfig()
         {
-            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "ajsgamr.ogg", "下次进入主菜单生效");
+            modTheme = Plugin.Config.Bind("Mod设置", "Mod主菜单音乐", "", "下次进入主菜单生效");
             modCustomVoice = Plugin.Config.Bind("Mod设置", "Mod语音开关", false, "配音开关");
-        }
-
-        public void OnUpdate()
-        {
         }
 
         static ConfigEntry<string> modBasePath;

@@ -3,25 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using UnityEngine;
-using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
 using Heluo.Data;
 using Heluo.Flow;
 using Heluo.Utility;
-using System.Reflection.Emit;
 
 namespace PathOfWuxia
 {
     // 开局设定
     public class HookNewGame : IHook
     {
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            return new Type[] { GetType() };
-        }
-        public void OnRegister(BaseUnityPlugin plugin)
+        public void OnRegister(PluginBinarizer plugin)
         {
             newGameAttributePoint = plugin.Config.Bind("开局设定", "属性点", 50, "设置开局属性点");
             newGameTraitPoint = plugin.Config.Bind("开局设定", "特性点", 1, "设置开局特性点");
@@ -29,24 +23,10 @@ namespace PathOfWuxia
             newGamePortraitOverride = plugin.Config.Bind("开局设定", "主角头像", string.Empty, "若已设置建模，则可为空，使用建模的头像，否则用此头像代替");
         }
 
-        public void OnUpdate()
-        {
-        }
-
         static ConfigEntry<int> newGameAttributePoint;
         static ConfigEntry<int> newGameTraitPoint;
         static ConfigEntry<string> newGameExteriorId;
         static ConfigEntry<string> newGamePortraitOverride;
-
-        // 1 可选多个特性
-        //[HarmonyTranspiler]
-        //[HarmonyPatch(typeof(CtrlRegistration), "OnTraitClick")]
-        //public static IEnumerable<CodeInstruction> StartPatch_UnlockTraitCount(IEnumerable<CodeInstruction> instructions)
-        //{
-        //    var codes = instructions.ToList();
-        //    codes[47].opcode = OpCodes.Ldc_I4_M1;   // 原本为Ldc_I4_2
-        //    return codes.AsEnumerable();
-        //}
 
         // 2 纪录开局数据
         private static Dictionary<CharacterUpgradableProperty, int> newAttributeValues;  // +

@@ -16,20 +16,18 @@ namespace PathOfWuxia
     // bug修复和一些增强特性
     public class HookFeaturesAndFixes : IHook
     {
-        public IEnumerable<Type> GetRegisterTypes()
+        public void OnRegister(PluginBinarizer plugin)
         {
-            return new Type[] { GetType() };
-        }
-        void IHook.OnRegister(BaseUnityPlugin plugin)
-        {
-            elementPos = plugin.Config.Bind("界面改进", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
+            //elementPos = plugin.Config.Bind("界面改进", "五行位置", new Vector3(-80, 15, 0), "调整五行位置");
             elementTextPos = plugin.Config.Bind("界面改进", "名字位置", new Vector3(8, 18, 0), "调整名字位置");
-            elementKey = plugin.Config.Bind("界面改进", "五行显示热键", KeyCode.F3, "战斗时显示五行。调整位置后需开关一次生效");
+            elementKey = plugin.Config.Bind("界面改进", "五行显示热键", KeyCode.F3, "战斗时显示名字。调整位置后需开关一次生效");
             showThreshold = plugin.Config.Bind("界面改进", "显示练满所需点数", true, "是否提示n次练满所需相应数值");
             showFavExp = plugin.Config.Bind("界面改进", "显示好感度", true, "在好友界面显示当前好感度 / 总需好感度 在送礼界面显示礼物可提高的好感度");
+
+            plugin.onUpdate += OnUpdate;
         }
 
-        void IHook.OnUpdate()
+        void OnUpdate()
         {
             if (Input.GetKeyDown(elementKey.Value))
             {
@@ -41,7 +39,7 @@ namespace PathOfWuxia
             }
         }
 
-        static ConfigEntry<Vector3> elementPos;
+        //static ConfigEntry<Vector3> elementPos;
         static ConfigEntry<Vector3> elementTextPos;
         static ConfigEntry<KeyCode> elementKey;
         static bool elementShow = true;
@@ -119,23 +117,23 @@ namespace PathOfWuxia
             }
         }
 
-        // 5 血条显示五行
+        // 5 血条显示五行(新版已有，废除之)
         public static void ProcessElementDisplay(WgBar wgbar)
         {
-            Image element;
+            //Image element;
             Text name;
             Slider hp = Traverse.Create(wgbar).Field("hp").GetValue<Slider>();
             var trans = hp.transform.Find("ElementImage");
             var trans2 = hp.transform.Find("UnitName");
             if (trans == null && wgbar.Unit != null)
             {
-                GameObject gameObject = new GameObject("ElementImage");
-                gameObject.transform.SetParent(hp.transform, false);
-                element = gameObject.AddComponent<Image>();
-                element.rectTransform.sizeDelta = new Vector2(50f, 50f);
-                element.color = new Color(1f, 1f, 1f, 0.8f);
-                element.transform.localPosition = elementPos.Value;
-                element.sprite = Game.Resource.Load<Sprite>(string.Format(GameConfig.ElementPath, wgbar.Unit.Element));
+                //GameObject gameObject = new GameObject("ElementImage");
+                //gameObject.transform.SetParent(hp.transform, false);
+                //element = gameObject.AddComponent<Image>();
+                //element.rectTransform.sizeDelta = new Vector2(50f, 50f);
+                //element.color = new Color(1f, 1f, 1f, 0.8f);
+                //element.transform.localPosition = elementPos.Value;
+                //element.sprite = Game.Resource.Load<Sprite>(string.Format(GameConfig.ElementPath, wgbar.Unit.Element));
                 GameObject gameObject2 = new GameObject("UnitName");
                 gameObject2.transform.SetParent(hp.transform, false);
                 name = gameObject2.AddComponent<Text>();
@@ -148,22 +146,23 @@ namespace PathOfWuxia
             }
             else
             {
-                element = trans.gameObject.GetComponent<Image>();
+                //element = trans.gameObject.GetComponent<Image>();
                 name = trans2.gameObject.GetComponent<Text>();
             }
             if (elementShow)
             {
-                element.gameObject.SetActive(true);
-                element.transform.localPosition = elementPos.Value;
+                //element.gameObject.SetActive(true);
+                //element.transform.localPosition = elementPos.Value;
                 name.gameObject.SetActive(true);
                 name.transform.localPosition = elementTextPos.Value;
             }
             else
             {
-                element.gameObject.SetActive(false);
+                //element.gameObject.SetActive(false);
                 name.gameObject.SetActive(false);
             }
         }
+
         [HarmonyPostfix, HarmonyPatch(typeof(WgBar), "Unit", MethodType.Setter)]
         public static void UnitElementPatch(WgBar __instance)
         {
@@ -312,23 +311,30 @@ namespace PathOfWuxia
                 expText.fontSize = 25;
                 expText.alignment = TextAnchor.MiddleLeft;
                 expText.rectTransform.sizeDelta = new Vector2(120f, 40f);
-                expText.transform.localPosition = new Vector3(-5f, 50f, 0f);
+                expText.transform.localPosition = new Vector3(-5f, 52f, 0f);
             }
         }
         [HarmonyPostfix, HarmonyPatch(typeof(Props), "PropsEffectDescription", MethodType.Getter)]
         public static void ShowRelationship_Props(Props __instance, ref string __result)
         {
-            if (!showFavExp.Value || __instance.PropsType != PropsType.Present)
-                return;
-            List<string> strFav = new List<string>();
-            foreach (var propsEffect in __instance.PropsEffect)
+            try
             {
-                if (propsEffect is PropsFavorable pf)
+                if (!showFavExp.Value || __instance.PropsType != PropsType.Present)
+                    return;
+                var strFav = new List<string>();
+                foreach (var propsEffect in __instance.PropsEffect)
                 {
-                    strFav.Add( string.Format("{0}{1}+{2}", Game.GameData.Exterior[pf.Npcid].FullName(), Game.Data.Get<StringTable>("General_Favorability").Text, pf.Value));
+                    if (propsEffect != null && propsEffect is PropsFavorable pf)
+                    {
+                        strFav.Add($"{Game.GameData.Exterior[pf.Npcid]?.FullName()}{Game.Data.Get<StringTable>("General_Favorability").Text}+{pf.Value}");
+                    }
                 }
+                __result += string.Join("，", strFav);
             }
-            __result += string.Join("，", strFav);
+            catch
+            {
+                Console.WriteLine($"道具有问题，{__instance.Name}");
+            }
         }
     }
 }

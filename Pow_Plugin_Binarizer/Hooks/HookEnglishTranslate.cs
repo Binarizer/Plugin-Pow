@@ -1,33 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using HarmonyLib;
-using BepInEx;
-using BepInEx.Configuration;
-using Heluo;
+﻿using HarmonyLib;
+using Heluo.Platform;
 using Heluo.UI;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
-using Heluo.Platform;
 
 namespace PathOfWuxia
 {
     public class HookEnglishTranslate : IHook
     {
-        static ConfigEntry<bool> EnglishTranslateOn;
-
-        public void OnRegister(BaseUnityPlugin plugin)
-        {
-            EnglishTranslateOn = plugin.Config.Bind("扩展功能", "English Translate", false, "If you use EnglishMod, please turn on to make UI correct. Need restart game.");
-        }
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            if (EnglishTranslateOn.Value)
-                return new Type[] { GetType() };
-            return null;
-        }
-
-        public void OnUpdate()
+        public void OnRegister(PluginBinarizer plugin)
         {
         }
 

@@ -6,7 +6,6 @@ using MessagePack.Resolvers;
 using HarmonyLib;
 using System.Reflection;
 using Ninject.Activation;
-using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.Data;
@@ -18,12 +17,7 @@ namespace PathOfWuxia
     // 独特物品系统(装备重铸、随机词条等等)
     public class HookUniqueItem : IHook
     {
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            return new Type[] { GetType() };
-        }
-
-        public void OnRegister(BaseUnityPlugin plugin)
+        public void OnRegister(PluginBinarizer plugin)
         {
             var resolver = HeluoResolver.Instance;
             var fi = resolver.GetType().GetField("resolvers", BindingFlags.Static | BindingFlags.NonPublic);
@@ -35,6 +29,8 @@ namespace PathOfWuxia
             });
 
             reforgeKey = plugin.Config.Bind("扩展功能", "切换重铸功能", KeyCode.R, "切换装备重铸功能，需要进入锻造菜单后按对应按键");
+
+            plugin.onUpdate += OnUpdate;
         }
         static ConfigEntry<KeyCode> reforgeKey;
 

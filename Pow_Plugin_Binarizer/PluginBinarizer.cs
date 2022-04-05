@@ -1,40 +1,64 @@
 ﻿using System;
+using System.Reflection;
 using System.Collections.Generic;
 using HarmonyLib;
 using BepInEx;
+using BepInEx.Configuration;
 using System.Linq;
 
 namespace PathOfWuxia
 {
-    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.2")]
+    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer", "1.3")]
     public class PluginBinarizer : BaseUnityPlugin
     {
+        /// <summary>
+        /// 加载
+        /// </summary>
         void RegisterHook(IHook hook)
         {
             hook.OnRegister(this);
-            hook.GetRegisterTypes().Do(t => { Harmony.CreateAndPatchAll(t); Console.WriteLine("Patch " + t.Name); });
+            Harmony.CreateAndPatchAll(hook.GetType()); 
+            Console.WriteLine("Patch " + hook.GetType().Name);
             hooks.Add(hook);
         }
 
-        private List<IHook> hooks = new List<IHook>();
+        /// <summary>
+        /// 卸载，还没搞懂，先重启吧
+        /// </summary>
+        void UnregisterHook(IHook hook)
+        {
+            //hook.OnUnregister(this);
+            //Harmony
+            //Console.WriteLine("Unpatch " + hook.GetType().Name);
+            //hooks.Remove(hook);
+        }
 
+        private Dictionary<Type, ConfigEntry<bool>> moduleEntries = new Dictionary<Type, ConfigEntry<bool>>();
+        private List<IHook> hooks = new List<IHook>();
+        public Action onUpdate;
+
+        /// <summary>
+        /// 注册各模块的钩子
+        /// </summary>
         void Awake()
         {
-            Console.WriteLine("美好的初始化开始");
+            var adv1 = new ConfigDescription("游戏重启生效", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 4 });
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            Console.WriteLine($"当前程序：{assembly.FullName}");
+            var hookTypes = from t in assembly.GetTypes() where typeof(IHook).IsAssignableFrom(t) && !t.IsAbstract select t;
+            Console.WriteLine("美好的初始化开始，统计钩子模块");
+            foreach (var hookType in hookTypes)
+            {
+                Console.WriteLine($"计入模块 [{hookType.Name}]");
+                moduleEntries[hookType] = Config.Bind("模块选择", hookType.Name, false, adv1);
+            }
 
-            RegisterHook(new HookModSupport());
-            RegisterHook(new HookGenerals());
-            RegisterHook(new HookEnglishTranslate());
-            RegisterHook(new HookNewGame());
-            RegisterHook(new HookFeaturesAndFixes());
-            RegisterHook(new HookMoreAccessories());
-            RegisterHook(new HookModExtensions());
-            RegisterHook(new HookModDebug());
-            RegisterHook(new HookUniqueItem());
-            RegisterHook(new HookSkillExp());
-            RegisterHook(new HookTeamManage());
-            RegisterHook(new HookInitiactiveBattle());
-            RegisterHook(new HookDuelPractice());
+            foreach (var modulePair in moduleEntries)
+            {
+                if (modulePair.Value.Value)
+                    RegisterHook(Activator.CreateInstance(modulePair.Key) as IHook);
+            }
+            Console.WriteLine($"可注册钩子模块共计{moduleEntries.Count}个");
         }
 
         void Start()
@@ -44,10 +68,7 @@ namespace PathOfWuxia
 
         void Update()
         {
-            foreach(IHook hook in hooks)
-            {
-                hook.OnUpdate();
-            }
+            onUpdate?.Invoke();
         }
     }
 }

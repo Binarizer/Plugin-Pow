@@ -23,11 +23,7 @@ namespace PathOfWuxia
         static ConfigEntry<KeyCode> teamMemberRemoveAll;
         static ConfigEntry<KeyCode> communityRemove;
 
-        public IEnumerable<Type> GetRegisterTypes()
-        {
-            return new Type[] { GetType() };
-        }
-        public void OnRegister(BaseUnityPlugin plugin)
+        public void OnRegister(PluginBinarizer plugin)
         {
             teamManageOn = plugin.Config.Bind("自由组队", "开启自由组队模式", false,
                 new ConfigDescription("开启自由组队模式，用来调整队伍、通过剧情等，剑击江湖mod请打开", null, new ConfigurationManagerAttributes { Order = 2 }));
@@ -53,6 +49,8 @@ namespace PathOfWuxia
                 }
                 UpdateTeamDisplay();
             };
+
+            plugin.onUpdate += OnUpdate;
         }
 
         static void BindConfig(BaseUnityPlugin plugin)
