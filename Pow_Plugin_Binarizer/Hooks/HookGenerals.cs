@@ -29,7 +29,8 @@ namespace PathOfWuxia
             speedValue = plugin.Config.Bind("游戏设定", "速度值", 1.5f, "调整速度值");
             speedKey = plugin.Config.Bind("游戏设定", "速度热键", KeyCode.F2, "开关速度调节");
             fastAction = plugin.Config.Bind("游戏设定", "快速行动", false, "战斗时不等待各种延迟事件，谨慎开启");
-            fastDamageRate = plugin.Config.Bind("游戏设定", "快速显示伤害", 1.0f, "小于1时战斗时伤害数字可提前出现");
+            fastDamageRate = plugin.Config.Bind("游戏设定", "快速显示伤害", 1f,
+                new ConfigDescription("小于1时战斗时伤害数字可提前出现", new AcceptableValueRange<float>(0f, 1f)));
             playerScale = plugin.Config.Bind("游戏设定", "主角模型尺寸", 1f, 
                 new ConfigDescription("修改主角在自由活动和战斗中的模型尺寸", new AcceptableValueRange<float>(0.75f, 1.5f)));
             difficulty = plugin.Config.Bind("游戏设定", "难度值", GameLevel.Normal, "调节游戏难度");
@@ -82,7 +83,7 @@ namespace PathOfWuxia
         {
             if (animationAwait && seconds != 0f)
             {
-                seconds = seconds * Mathf.Clamp01(fastDamageRate.Value) / Time.timeScale;
+                seconds = seconds * fastDamageRate.Value / Time.timeScale;
                 animationAwait = false;
             }
             else
