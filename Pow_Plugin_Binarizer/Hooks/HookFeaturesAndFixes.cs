@@ -11,7 +11,7 @@ namespace PathOfWuxia
 {
     // bug修复和一些增强特性
     [System.ComponentModel.DisplayName("杂项bug修复")]
-    [System.ComponentModel.Description("一些原版代码问题修复")]
+    [System.ComponentModel.Description("一些官方代码问题修复")]
     public class HookFeaturesAndFixes : IHook
     {
         public void OnRegister(PluginBinarizer plugin)

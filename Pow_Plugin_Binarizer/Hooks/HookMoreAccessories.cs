@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using UnityEngine;
-using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -18,12 +17,12 @@ namespace PathOfWuxia
 {
     // 饰品栏增加
     [System.ComponentModel.DisplayName("多重饰品栏")]
-    [Description("多重饰品栏")]
+    [Description("可以支持同时装备多个饰品")]
     public class HookMoreAccessories : IHook
     {
         public void OnRegister(PluginBinarizer plugin)
         {
-            moreAccessories = plugin.Config.Bind<int>("扩展功能", "多重饰品栏", 0, "大于0时可装备多个饰品");
+            moreAccessories = plugin.Config.Bind<int>("扩展功能", "多重饰品栏", 0, "大于0时可装备多个饰品，重启游戏生效");
             moreAccessories.SettingChanged += OnMoreAccessoriesChange;
         }
 

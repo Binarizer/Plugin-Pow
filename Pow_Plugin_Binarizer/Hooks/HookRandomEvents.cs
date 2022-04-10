@@ -9,7 +9,7 @@ namespace PathOfWuxia
 {
     // 随机事件
     [System.ComponentModel.DisplayName("随机事件设置")]
-    [System.ComponentModel.Description("随机事件")]
+    [System.ComponentModel.Description("随机事件功能模块")]
     public class HookRandomEvents : IHook
     {
         enum ProbablyMode

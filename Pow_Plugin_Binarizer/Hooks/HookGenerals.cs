@@ -9,8 +9,8 @@ using Heluo.FSM.Player;
 namespace PathOfWuxia
 {
     // 一般游戏设定功能
-    [System.ComponentModel.DisplayName("速度、难度设定")]
-    [System.ComponentModel.Description("速度、难度设定")]
+    [System.ComponentModel.DisplayName("一般设定")]
+    [System.ComponentModel.Description("速度、难度、模型尺寸等设定")]
     public class HookGenerals : IHook
     {
         static ConfigEntry<float> speedValue;

@@ -17,7 +17,7 @@ namespace PathOfWuxia
 {
     // 战斗中获得招式经验、招式等级自定义
     [System.ComponentModel.DisplayName("招式经验设定")]
-    [System.ComponentModel.Description("招式经验设定")]
+    [System.ComponentModel.Description("战斗中用招式可增加招式经验")]
     public class HookSkillExp : IHook
     {
         public void OnRegister(PluginBinarizer plugin)

@@ -25,7 +25,7 @@ namespace PathOfWuxia
 {
     // 多Mod支持
     [System.ComponentModel.DisplayName("Mod支持")]
-    [System.ComponentModel.Description("Mod支持")]
+    [System.ComponentModel.Description("Mod支持，若要加Mod必须勾选。支持自定义语音、音乐，扩展新的特效模型包等等")]
     public class HookModSupport : IHook
     {
         static private PluginBinarizer Plugin = null;

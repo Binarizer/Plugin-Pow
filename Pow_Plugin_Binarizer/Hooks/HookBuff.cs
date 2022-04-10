@@ -21,7 +21,7 @@ namespace PathOfWuxia
 
 
         //给不显示的buff加上图标（暂时统一用特质buff图标）
-        [HarmonyPrefix, HarmonyPatch(typeof(WuxiaBattleBuffer), "AddBuffer", new Type[] { typeof(WuxiaUnit), typeof(Heluo.Data.Buffer), typeof(bool), typeof(bool) })]
+        [HarmonyPrefix, HarmonyPatch(typeof(WuxiaBattleBuffer), "AddBuffer", new Type[] { typeof(WuxiaUnit), typeof(Heluo.Data.Buffer), typeof(BufferType) })]
         public static bool AddBufferPatch_showHideBuff(ref WuxiaBattleBuffer __instance, ref Heluo.Data.Buffer buffer)
         {
             if (showHideBuff.Value)

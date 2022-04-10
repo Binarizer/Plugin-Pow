@@ -14,7 +14,7 @@ namespace PathOfWuxia
 {
     // 切换战斗姿势
     [System.ComponentModel.DisplayName("切换战斗姿势")]
-    [Description("切换战斗姿势")]
+    [Description("通过F7/F8切换战斗姿势")]
     public class HookBattlePose : IHook
     {
         static ConfigEntry<KeyCode> changeAnim;

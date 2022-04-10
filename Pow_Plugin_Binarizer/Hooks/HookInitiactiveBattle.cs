@@ -15,13 +15,12 @@ using Heluo.FSM.Battle;
 using Heluo.UI;
 using Heluo.Data;
 using Heluo.Utility;
-using Heluo.FSM;
 using System.ComponentModel;
 
 namespace PathOfWuxia
 {
     [System.ComponentModel.DisplayName("战斗模式设置")]
-    [Description("半即时战斗模式、自动战斗")]
+    [Description("半即时战斗模式、自动战斗等功能")]
     // 半即时战斗
     public class HookInitiactiveBattle : IHook
     {
@@ -603,27 +602,6 @@ namespace PathOfWuxia
             return false;
         }
 
-
-        static bool IsContinuous_Beheading;
-        [HarmonyPrefix, HarmonyPatch(typeof(UnitPlayAbility), "Perform")]
-        public static bool UnitPlayAbilityPatch_getIsContinuous_Beheading(UnitPlayAbility __instance)
-        {
-            var t = Traverse.Create(__instance);
-            var args = t.Field("args");
-            Console.WriteLine("args:" + args);
-
-            WuxiaUnit Attacker = args.Field("Attacker").GetValue<WuxiaUnit>();
-            Console.WriteLine("Attacker:" + Attacker);
-
-            IsContinuous_Beheading = Attacker.IsContinuous_Beheading;
-            Console.WriteLine("IsContinuous_Beheading:" + IsContinuous_Beheading);
-
-            return true;
-        }
-
-
-
-
         [HarmonyPrefix, HarmonyPatch(typeof(EndUnit), "OnEnable")]
         public static bool TimedPatch_End1(EndUnit __instance)
         {
@@ -654,15 +632,9 @@ namespace PathOfWuxia
             BM.OnBattleEvent(BattleEventToggleTime.EndUnit, Array.Empty<object>());
             FSM.UI.CloseMenu();
             FSM.UI.CloseUnitInfo();
-            Console.WriteLine("1");
-            Console.WriteLine("BM.IsEvent:" + BM.IsEvent);
             if (!BM.IsEvent)
             {
-                var fsmvar = Traverse.Create((GameStateMachine)FSM);
-                var endUnitEventArgs = fsmvar.Field("eventArgs");
-                Console.WriteLine("endUnitEventArgs:" + endUnitEventArgs);
-                Console.WriteLine("IsContinuous_Beheading:" + endUnitEventArgs.Field("IsContinuous_Beheading").GetValue<bool>());
-                Console.WriteLine("IsContinuous_Beheading:" + IsContinuous_Beheading);
+                var eventArgs = Traverse.Create(FSM).Property("eventArgs");
                 if (selected.GetValue<WuxiaUnit>() != null)
                 {
                     WuxiaUnit selectedUnit = selected.GetValue<WuxiaUnit>();
@@ -675,19 +647,18 @@ namespace PathOfWuxia
                     {
                         selectedUnit2.OnTurnEnd();
                     }
-                    if (endUnitEventArgs != null && IsContinuous_Beheading)
+                    if (eventArgs.GetValue() != null && eventArgs.Field("IsContinuous_Beheading").GetValue<bool>())
                     {
                         BM.SendBillboard(new BillboardArg
                         {
-                            Pos = selected.GetValue<WuxiaUnit>().transform.position,
+                            Pos = selectedUnit.transform.position,
                             Numb = 0,
                             MessageType = Heluo.Battle.MessageType.Continuous
                         });
-                        BM.OnBufferEvent(BufferTiming.Continuous_Beheading);
-                        WuxiaUnit selectedUnit3 = selected.GetValue<WuxiaUnit>();
+                        selectedUnit.OnBufferEvent(BufferTiming.Continuous_Beheading);
+                        WuxiaUnit selectedUnit3 = selectedUnit;
                         if (selectedUnit3 != null)
                         {
-                            Console.WriteLine("selectedUnit3.OnTurnStart()");
                             selectedUnit3.OnTurnStart();
                         }
                     }

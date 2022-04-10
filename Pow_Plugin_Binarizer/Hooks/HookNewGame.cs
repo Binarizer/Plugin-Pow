@@ -10,7 +10,7 @@ namespace PathOfWuxia
 {
     // 开局设定
     [System.ComponentModel.DisplayName("开局设定")]
-    [System.ComponentModel.Description("开局设定")]
+    [System.ComponentModel.Description("开局点数设定")]
     public class HookNewGame : IHook
     {
         public void OnRegister(PluginBinarizer plugin)

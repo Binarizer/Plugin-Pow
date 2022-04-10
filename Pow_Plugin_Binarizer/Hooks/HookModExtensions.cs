@@ -19,8 +19,8 @@ using Heluo.Features;
 namespace PathOfWuxia
 {
     // Mod辅助扩展
-    [System.ComponentModel.DisplayName("剑击江湖mod扩展功能")]
-    [System.ComponentModel.Description("剑击江湖mod扩展功能")]
+    [System.ComponentModel.DisplayName("mod扩展功能")]
+    [System.ComponentModel.Description("mod扩展功能，剑击江湖用（道具型秘籍、Json脚本支持、战场掉落、随机战场、扩展战斗回调）")]
     public class HookModExtensions : IHook
     {
 

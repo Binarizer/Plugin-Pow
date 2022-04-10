@@ -9,7 +9,7 @@ using System.ComponentModel;
 namespace PathOfWuxia
 {
     [DisplayName("养成指令")]
-    [Description("显示练满所需点数")]
+    [Description("显示练功时N-1次练满所需点数")]
     class HookNurturanceOrder : IHook
     {
         static ConfigEntry<bool> showThreshold;

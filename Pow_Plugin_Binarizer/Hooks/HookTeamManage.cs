@@ -15,7 +15,7 @@ namespace PathOfWuxia
 {
     // 队伍管理
     [System.ComponentModel.DisplayName("队伍管理")]
-    [System.ComponentModel.Description("队伍管理")]
+    [System.ComponentModel.Description("可自由组队、调整队伍成员")]
     public class HookTeamManage : IHook
     {
         static ConfigEntry<bool> teamManageOn;

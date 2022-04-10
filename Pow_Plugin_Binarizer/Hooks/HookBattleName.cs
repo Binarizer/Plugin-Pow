@@ -9,7 +9,7 @@ using System.ComponentModel;
 namespace PathOfWuxia
 {
     [System.ComponentModel.DisplayName("战斗时显示名字")]
-    [Description("战斗时显示名字")]
+    [Description("战斗时显示角色名字")]
     public class HookBattleName : IHook
     {
         static ConfigEntry<Vector3> elementTextPos;

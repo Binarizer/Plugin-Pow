@@ -11,7 +11,7 @@ using System.ComponentModel;
 namespace PathOfWuxia
 {
     [System.ComponentModel.DisplayName("显示好感度")]
-    [Description("显示好感度")]
+    [Description("交友页面、礼物显示好感度数值")]
     class HookFavExp : IHook
     {
         private static ConfigEntry<bool> showFavExp;

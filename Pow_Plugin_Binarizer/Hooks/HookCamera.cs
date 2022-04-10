@@ -10,7 +10,7 @@ using System.ComponentModel;
 namespace PathOfWuxia
 {
     [System.ComponentModel.DisplayName("相机设置")]
-    [Description("相机设置")]
+    [Description("相机自由视角等")]
     // 自由相机功能
     public class HookCamera : IHook
     {

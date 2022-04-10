@@ -15,18 +15,27 @@ namespace PathOfWuxia
         /// <summary>
         /// 加载
         /// </summary>
-        void RegisterHook(IHook hook)
+        void RegisterHook(Type t)
         {
-            hook.OnRegister(this);
-            Harmony.CreateAndPatchAll(hook.GetType()); 
-            Console.WriteLine("Patch " + hook.GetType().Name);
-            hooks.Add(hook);
+            try
+            {
+                IHook hook = Activator.CreateInstance(t) as IHook;
+                hook.OnRegister(this);
+                Harmony.CreateAndPatchAll(t);
+                hooks.Add(hook);
+                Console.WriteLine($"Patch {t.Name} Success!");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Patch {t.Name} Failed! Exception={e}");
+                moduleEntries[t].Value = false;
+            }
         }
 
         /// <summary>
         /// 卸载，还没搞懂，先重启吧
         /// </summary>
-        void UnregisterHook(IHook hook)
+        void UnregisterHook(Type t)
         {
             //hook.OnUnregister(this);
             //Harmony
@@ -52,14 +61,14 @@ namespace PathOfWuxia
                 DisplayNameAttribute displayName = (DisplayNameAttribute)hookType.GetCustomAttribute(typeof(DisplayNameAttribute));
                 DescriptionAttribute description = (DescriptionAttribute)hookType.GetCustomAttribute(typeof(DescriptionAttribute));
                 var adv1 = new ConfigDescription(description.Description, null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 4 });
-                Console.WriteLine($"计入模块 [{displayName.DisplayName + ":" + description.Description}]");
                 moduleEntries[hookType] = Config.Bind("模块选择", displayName.DisplayName, false, adv1);
+                Console.WriteLine($"计入模块 [{displayName.DisplayName}]");
             }
 
             foreach (var modulePair in moduleEntries)
             {
                 if (modulePair.Value.Value)
-                    RegisterHook(Activator.CreateInstance(modulePair.Key) as IHook);
+                    RegisterHook(modulePair.Key);
             }
             Console.WriteLine($"可注册钩子模块共计{moduleEntries.Count}个");
         }
