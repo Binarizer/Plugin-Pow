@@ -5,9 +5,12 @@ using BepInEx.Configuration;
 using Heluo.Battle;
 using Heluo.Components;
 using Heluo.Controller;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
+    [System.ComponentModel.DisplayName("相机设置")]
+    [Description("相机设置")]
     // 自由相机功能
     public class HookCamera : IHook
     {
@@ -20,12 +23,14 @@ namespace PathOfWuxia
         static ConfigEntry<CameraFocusMode> cameraFocusMode;
         static ConfigEntry<bool> cameraFree;
         static ConfigEntry<bool> cameraFree_Battle;
+        static ConfigEntry<float> zoomSpeed;
 
         public void OnRegister(PluginBinarizer plugin)
         {
             cameraFocusMode = plugin.Config.Bind("相机设置", "战斗相机跟随方式", CameraFocusMode.Attacker, "战斗时相机如何跟随，游戏默认跟随攻击者");
             cameraFree = plugin.Config.Bind("相机设置", "场景自由视角", false, "是否开启自由视角");
-            cameraFree_Battle = plugin.Config.Bind("相机设置", "战斗自由视角", false, "是否开启战斗自由视角，重启战斗生效");
+            cameraFree_Battle = plugin.Config.Bind("相机设置", "战斗自由视角", false, "是否开启战斗自由视角，重启战斗生效"); 
+			zoomSpeed = plugin.Config.Bind("相机设置", "缩放速度", 20f, "相机缩放速度");
         }
 
         /// <summary>
@@ -82,8 +87,10 @@ namespace PathOfWuxia
         {
             if (cameraFree_Battle.Value)
             {
-                __instance.minDistance = 3f;
                 __instance.ylocked = false;
+                __instance.minDistance = 0;
+                __instance.maxDistance = 10000;
+                __instance.ZoomSpeed = zoomSpeed.Value;
             }
         }
 
@@ -114,6 +121,8 @@ namespace PathOfWuxia
                     var param = Traverse.Create(__instance).Field("param").GetValue<GameCamera>();
                     param.x += dx * param.HorizontalSpeed;
                     param.y -= dy * param.VerticalSpeed;
+                    param.yMinLimit = -90;
+                    param.yMaxLimit = 90;
                     param.y = Traverse.Create(__instance).Method("ClampAngle", new object[] { param.y, param.yMinLimit, param.yMaxLimit }).GetValue<float>();
                 }
             }
@@ -130,7 +139,9 @@ namespace PathOfWuxia
                 if (cameraMode == GameCamera.CameraMode.LimitFollow)
                 {
                     var param = Traverse.Create(__instance).Field("param").GetValue<GameCamera>();
-                    param.distance -= s * param.ZoomSpeed * Time.deltaTime;
+                    param.distance -= s * zoomSpeed.Value * Time.deltaTime;
+                    param.minDistance = 0;
+                    param.maxDistance = 10000;
                     param.distance = Traverse.Create(__instance).Method("ClampAngle", new object[] { param.distance, param.minDistance, param.maxDistance }).GetValue<float>();
                 }
             }

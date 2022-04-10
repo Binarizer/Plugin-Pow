@@ -16,9 +16,12 @@ using Heluo.UI;
 using Heluo.Data;
 using Heluo.Utility;
 using Heluo.FSM;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
+    [System.ComponentModel.DisplayName("战斗模式设置")]
+    [Description("半即时战斗模式、自动战斗")]
     // 半即时战斗
     public class HookInitiactiveBattle : IHook
     {

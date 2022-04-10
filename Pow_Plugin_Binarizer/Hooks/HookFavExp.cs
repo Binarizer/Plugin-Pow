@@ -6,17 +6,22 @@ using Heluo;
 using Heluo.UI;
 using Heluo.Data;
 using UnityEngine.UI;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
+    [System.ComponentModel.DisplayName("显示好感度")]
+    [Description("显示好感度")]
     class HookFavExp : IHook
     {
         private static ConfigEntry<bool> showFavExp;
+
 
         public void OnRegister(PluginBinarizer plugin)
         {
             showFavExp = plugin.Config.Bind("界面改进", "显示好友好感度与礼物好感度", false, "在好友界面显示当前好感度/总需好感度 在送礼和商店界面显示礼物可提高的好感度");
         }
+
 
         //显示好友好感度
         [HarmonyPostfix, HarmonyPatch(typeof(UIRelationship), "UpdateRelationship")]

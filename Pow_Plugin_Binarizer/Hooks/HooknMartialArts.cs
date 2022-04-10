@@ -6,19 +6,17 @@ using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
 using Heluo.Data;
-using Heluo.Flow;
 using Heluo.Utility;
 using Heluo.Battle;
-using Heluo.FSM;
-using Heluo.FSM.Battle;
 using UnityEngine;
 using UnityEngine.UI;
 using Heluo.Global;
-using Heluo.Controller;
 using UnityEngine.EventSystems;
 
 namespace PathOfWuxia
 {
+    [System.ComponentModel.DisplayName("武功扩展")]
+    [System.ComponentModel.Description("非战斗时使用恢复技能、非战斗时使用五炁朝元、战斗时切换心法")]
     public class HooknMartialArts : IHook
     {
         public void OnRegister(PluginBinarizer plugin)
@@ -668,7 +666,7 @@ namespace PathOfWuxia
 
             Console.WriteLine("放大按钮");
             //放大按钮
-            mantraBtn.GetComponent<Image>().rectTransform.sizeDelta = new Vector3(105, 105);
+            mantraBtn.GetComponents<Image>()[0].rectTransform.sizeDelta = new Vector3(105, 105);
             Console.WriteLine("OnMantraHighlighed end");
         }
 

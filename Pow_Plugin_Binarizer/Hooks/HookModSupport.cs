@@ -7,6 +7,7 @@ using System.Text;
 using System.Timers;
 using HarmonyLib;
 using UnityEngine;
+using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
@@ -23,6 +24,8 @@ using Newtonsoft.Json;
 namespace PathOfWuxia
 {
     // 多Mod支持
+    [System.ComponentModel.DisplayName("Mod支持")]
+    [System.ComponentModel.Description("Mod支持")]
     public class HookModSupport : IHook
     {
         static private PluginBinarizer Plugin = null;

@@ -6,15 +6,19 @@ using MessagePack.Resolvers;
 using HarmonyLib;
 using System.Reflection;
 using Ninject.Activation;
+using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.Data;
 using Heluo.UI;
 using UnityEngine;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
     // 独特物品系统(装备重铸、随机词条等等)
+    [System.ComponentModel.DisplayName("装备重铸")]
+    [Description("装备重铸")]
     public class HookUniqueItem : IHook
     {
         public void OnRegister(PluginBinarizer plugin)

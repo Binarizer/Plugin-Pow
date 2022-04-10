@@ -1,11 +1,14 @@
 ﻿using HarmonyLib;
-using Heluo.Platform;
 using Heluo.UI;
 using UnityEngine;
 using UnityEngine.UI;
+using Heluo.Platform;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
+    [System.ComponentModel.DisplayName("英语翻译")]
+    [Description("英语翻译")]
     public class HookEnglishTranslate : IHook
     {
         public void OnRegister(PluginBinarizer plugin)

@@ -14,7 +14,9 @@ using UnityEngine;
 
 namespace PathOfWuxia
 {
-	public class HookSave : IHook
+	[System.ComponentModel.DisplayName("存档设定")]
+	[System.ComponentModel.Description("存档设定")]
+	class HookSave : IHook
 	{
 		private static ConfigEntry<int> saveCount;
 		private static ConfigEntry<bool> remindBlankSaveCount;
@@ -24,6 +26,7 @@ namespace PathOfWuxia
 		private static ConfigEntry<bool> deleteSaveFile;
 		private static int currentPage = 1;
 		private static int totalPage = 1;
+
 
 		public void OnRegister(PluginBinarizer plugin)
 		{

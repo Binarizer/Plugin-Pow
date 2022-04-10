@@ -14,6 +14,8 @@ using Heluo.Flow;
 namespace PathOfWuxia
 {
     // 队伍管理
+    [System.ComponentModel.DisplayName("队伍管理")]
+    [System.ComponentModel.Description("队伍管理")]
     public class HookTeamManage : IHook
     {
         static ConfigEntry<bool> teamManageOn;
@@ -28,7 +30,7 @@ namespace PathOfWuxia
             teamManageOn = plugin.Config.Bind("自由组队", "开启自由组队模式", false,
                 new ConfigDescription("开启自由组队模式，用来调整队伍、通过剧情等，剑击江湖mod请打开", null, new ConfigurationManagerAttributes { Order = 2 }));
             teamMemberMax = plugin.Config.Bind("自由组队", "最大队伍人数", 4,
-                new ConfigDescription("最大队伍人数", new AcceptableValueRange<int>(4, 9), new ConfigurationManagerAttributes { Order = 1 }));
+                new ConfigDescription("最大队伍人数", new AcceptableValueRange<int>(4, 10), new ConfigurationManagerAttributes { Order = 1 }));
             if (teamManageOn.Value)
             {
                 BindConfig(plugin);

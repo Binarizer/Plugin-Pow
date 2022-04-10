@@ -32,6 +32,7 @@ namespace PathOfWuxia
                 new BufferEventNodeConverter(),
                 new BattleAndBuffGraphConverter(),
                 //new ModOutputNodeConverter(),
+                new BattleNodeConverter(),
                 new ScheduleGraphConverter()
             }
         };
@@ -80,12 +81,14 @@ namespace PathOfWuxia
             if (source[0] != '{')
             {
                 // original load from FileHelperEngine
+                Console.WriteLine("通过TXT表格加载: " + path);
                 var fileHelperEngine = new FileHelpers.FileHelperEngine<T>(System.Text.Encoding.UTF8);
                 return fileHelperEngine.ReadString(source)[0];
             }
             else
             {
                 // load from valid json
+                Console.WriteLine("通过Json加载: " + path);
                 if (replaceText)
                 {
                     // content replace
@@ -144,6 +147,24 @@ namespace PathOfWuxia
             writer.WriteValue(Enum.GetName(value.GetType(), value));
         }
     }
+    // Mod OutputNode Json Converter
+    public class BattleNodeConverter : JsonConverter
+    {
+        // override methods
+        public override bool CanConvert(Type objectType) => typeof(BattleNode).IsAssignableFrom(objectType);
+
+        public override bool CanRead => true;
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            return ModOutputNodeConverter.ReadJsonNode(reader, objectType, existingValue, serializer);
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            ModOutputNodeConverter.WriteJsonNode(writer, value, serializer, ModOutputNodeConverter.WriteMode.Value);
+        }
+    }
 
     // Mod OutputNode Json Converter
     public class ModOutputNodeConverter : JsonConverter
@@ -170,6 +191,16 @@ namespace PathOfWuxia
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
+            return ReadJsonNode(reader, objectType, existingValue, serializer);
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            WriteJsonNode(writer, value, serializer, writeMode);
+        }
+
+        public static object ReadJsonNode(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
             if (reader.TokenType == JsonToken.String)
             {
                 // original import method
@@ -187,14 +218,15 @@ namespace PathOfWuxia
             foreach (var info in fields)
             {
                 JToken t = o[info.Name];
-                if ( t != null)
+                if (t != null)
                 {
                     info.SetValue(result, t.ToObject(info.FieldType, serializer));
                 }
             }
             return result;
         }
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+
+        public static void WriteJsonNode(JsonWriter writer, object value, JsonSerializer serializer, WriteMode writeMode)
         {
             Type type = value.GetType();
             JObject o = new JObject
@@ -235,7 +267,7 @@ namespace PathOfWuxia
                     {
                         continue;
                     }
-                    if (v!=null)
+                    if (v != null)
                         o.Add(info.Name, JToken.FromObject(v, serializer));
                     else
                         o.Add(info.Name, null);

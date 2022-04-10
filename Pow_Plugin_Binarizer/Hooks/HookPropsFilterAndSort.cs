@@ -9,9 +9,12 @@ using HarmonyLib;
 using Heluo.UI;
 using Heluo.Data;
 using UnityEngine;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
+    [System.ComponentModel.DisplayName("物品过滤与排序")]
+    [Description("物品过滤与排序")]
     class HookPropsFilterAndSort : IHook
     {
         enum SortMode
@@ -26,12 +29,15 @@ namespace PathOfWuxia
         private static ConfigEntry<SortMode> giftSortMode;
         private static ConfigEntry<SortMode> equipSortMode;
 
+
         public void OnRegister(PluginBinarizer plugin)
         {
             giftFilter = plugin.Config.Bind("界面改进", "礼物过滤", false, "在送礼界面过滤礼物，只留下能增加当前角色好感度的礼物");
             giftSortMode = plugin.Config.Bind("界面改进", "礼物排序", SortMode.None, "在送礼界面对礼物进行排序 None-不排序 minToMax-按好感从小到大排序 maxToMin-按好感从大到小排序 minToMaxByType-先按类型排序，后按好感从小到大排序 maxToMinByType-先按类型排序，后按好感从大到小排序");
             equipSortMode = plugin.Config.Bind("界面改进", "装备排序", SortMode.None, "在装备界面对装备进行排序 None-不排序 minToMax-按加值从小到大排序 maxToMin-按加值从大到小排序 minToMaxByType-先按类型排序，后按加值从小到大排序 maxToMinByType-先按类型排序，后按加值从大到小排序");
         }
+
+
         
         [HarmonyPrefix, HarmonyPatch(typeof(CtrlGiftInvertoryWindow), "SetSortInventory", new Type[] { typeof(InventoryWindowInfo) })]
         public static bool GiftInvertoryPatch_propsFilterAndSort(ref CtrlGiftInvertoryWindow __instance, ref InventoryWindowInfo inventoryWindowInfo)

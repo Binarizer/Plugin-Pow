@@ -15,7 +15,9 @@ using Heluo.Manager;
 
 namespace PathOfWuxia
 {
-	public class HookElective : IHook
+	[System.ComponentModel.DisplayName("自由选课")]
+	[System.ComponentModel.Description("自由选课")]
+	class HookElective : IHook
 	{
 		private static ConfigEntry<bool> multiCourseSelect;
 
@@ -23,6 +25,7 @@ namespace PathOfWuxia
 		{
 			multiCourseSelect = plugin.Config.Bind("扩展功能", "自由选课", false, "每次选课可自由选择上哪些课");
 		}
+
 
 		public static Action onCompletedFinal;
 

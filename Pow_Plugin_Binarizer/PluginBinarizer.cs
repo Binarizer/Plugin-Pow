@@ -5,39 +5,26 @@ using HarmonyLib;
 using BepInEx;
 using BepInEx.Configuration;
 using System.Linq;
+using System.ComponentModel;
 
 namespace PathOfWuxia
 {
-    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer，修改 by 寻宇", "2.0")]
+    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer，修改 by 寻宇", "2.1.0")]
     public class PluginBinarizer : BaseUnityPlugin
     {
         /// <summary>
-        /// 加载模块
+        /// 加载
         /// </summary>
-        void RegisterHook(Type hookType)
+        void RegisterHook(IHook hook)
         {
-            try
-            {
-                if (Activator.CreateInstance(hookType) is IHook hook)
-                {
-                    hook.OnRegister(this);
-                    Harmony.CreateAndPatchAll(hook.GetType());
-                    hooks.Add(hook);
-                    Console.WriteLine($"加载该模块成功！");
-                }
-                else
-                {
-                    Console.WriteLine($"加载该模块失败！");
-                }
-            }
-            catch
-            {
-                Console.WriteLine($"加载该模块失败！");
-            }
+            hook.OnRegister(this);
+            Harmony.CreateAndPatchAll(hook.GetType()); 
+            Console.WriteLine("Patch " + hook.GetType().Name);
+            hooks.Add(hook);
         }
 
         /// <summary>
-        /// 卸载模块，还没搞懂，先重启吧
+        /// 卸载，还没搞懂，先重启吧
         /// </summary>
         void UnregisterHook(IHook hook)
         {
@@ -52,35 +39,29 @@ namespace PathOfWuxia
         public Action onUpdate;
 
         /// <summary>
-        /// 注册各模块
+        /// 注册各模块的钩子
         /// </summary>
         void Awake()
         {
-            var adv1 = new ConfigDescription("游戏重启生效", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 4 });
             Assembly assembly = Assembly.GetExecutingAssembly();
             Console.WriteLine($"当前程序：{assembly.FullName}");
             var hookTypes = from t in assembly.GetTypes() where typeof(IHook).IsAssignableFrom(t) && !t.IsAbstract select t;
-            Console.WriteLine("美好的初始化开始，统计模块");
+            Console.WriteLine("美好的初始化开始，统计钩子模块");
             foreach (var hookType in hookTypes)
             {
-                Console.WriteLine($"统计模块 [{hookType.Name}]");
-                moduleEntries[hookType] = Config.Bind("模块选择", hookType.Name, false, adv1);
+                DisplayNameAttribute displayName = (DisplayNameAttribute)hookType.GetCustomAttribute(typeof(DisplayNameAttribute));
+                DescriptionAttribute description = (DescriptionAttribute)hookType.GetCustomAttribute(typeof(DescriptionAttribute));
+                var adv1 = new ConfigDescription(description.Description, null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 4 });
+                Console.WriteLine($"计入模块 [{displayName.DisplayName + ":" + description.Description}]");
+                moduleEntries[hookType] = Config.Bind("模块选择", displayName.DisplayName, false, adv1);
             }
-            Console.WriteLine($"可注册模块共计{moduleEntries.Count}个");
+
             foreach (var modulePair in moduleEntries)
             {
-                if (modulePair.Value == null)
-                {
-                    Console.WriteLine($"设置加载失败!{modulePair.Key.Name}");
-                    continue;
-                }
                 if (modulePair.Value.Value)
-                {
-                    Console.WriteLine($"加载模块 [{ modulePair.Key.Name}]");
-                    RegisterHook(modulePair.Key);
-                }
+                    RegisterHook(Activator.CreateInstance(modulePair.Key) as IHook);
             }
-            Console.WriteLine($"加载模块生效{hooks.Count}个");
+            Console.WriteLine($"可注册钩子模块共计{moduleEntries.Count}个");
         }
 
         void Start()
