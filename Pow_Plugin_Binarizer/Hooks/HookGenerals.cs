@@ -5,6 +5,7 @@ using BepInEx.Configuration;
 using Heluo;
 using Heluo.Data;
 using Heluo.FSM.Player;
+using Heluo.Battle;
 
 namespace PathOfWuxia
 {
@@ -15,14 +16,20 @@ namespace PathOfWuxia
     {
         static ConfigEntry<float> speedValue;
         static ConfigEntry<KeyCode> speedKey;
+        static ConfigEntry<bool> fastAction;
+        static ConfigEntry<float> fastDamageRate;
         static ConfigEntry<float> playerScale;
         static ConfigEntry<GameLevel> difficulty;
-        bool speedOn = false;
+
+        static bool speedOn = false;
+        static bool animationAwait = false;
 
         public void OnRegister(PluginBinarizer plugin)
         {
             speedValue = plugin.Config.Bind("游戏设定", "速度值", 1.5f, "调整速度值");
             speedKey = plugin.Config.Bind("游戏设定", "速度热键", KeyCode.F2, "开关速度调节");
+            fastAction = plugin.Config.Bind("游戏设定", "快速行动", false, "战斗时不等待各种延迟事件，谨慎开启");
+            fastDamageRate = plugin.Config.Bind("游戏设定", "快速显示伤害", 1.0f, "小于1时战斗时伤害数字可提前出现");
             playerScale = plugin.Config.Bind("游戏设定", "主角模型尺寸", 1f, 
                 new ConfigDescription("修改主角在自由活动和战斗中的模型尺寸", new AcceptableValueRange<float>(0.75f, 1.5f)));
             difficulty = plugin.Config.Bind("游戏设定", "难度值", GameLevel.Normal, "调节游戏难度");
@@ -73,7 +80,25 @@ namespace PathOfWuxia
         [HarmonyPrefix, HarmonyPatch(typeof(AsyncTools), "GetAwaiter", new Type[] { typeof(float) })]
         public static bool SpeedPatch(ref float seconds)
         {
-            seconds = seconds / Time.timeScale;
+            if (animationAwait && seconds != 0f)
+            {
+                seconds = seconds * Mathf.Clamp01(fastDamageRate.Value) / Time.timeScale;
+                animationAwait = false;
+            }
+            else
+            {
+                seconds = fastAction.Value ? 0f : seconds / Time.timeScale;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 播动画依然等待
+        /// </summary>
+        [HarmonyPrefix, HarmonyPatch(typeof(BattleProcessStrategy), "ProcessAnimation", new Type[] { typeof(DamageInfo), typeof(float) })]
+        public static bool SpeedPatch2()
+        {
+            animationAwait = true;
             return true;
         }
     }
