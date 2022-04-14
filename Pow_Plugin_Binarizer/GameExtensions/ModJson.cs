@@ -518,7 +518,10 @@ namespace PathOfWuxia
         {
             BaseFlowGraph graph = value as BaseFlowGraph;
             JObject item = (JObject)JToken.FromObject(graph.Output, serializer);
-            item.AddFirst(new JProperty("$type", graph.Output.GetType().Name));
+            if (item.GetValue("$type") == null)
+            {
+                item.AddFirst(new JProperty("$type", graph.Output.GetType().Name));
+            }
             item.WriteTo(writer);
         }
     }
