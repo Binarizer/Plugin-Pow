@@ -178,6 +178,8 @@ namespace PathOfWuxia
             cellCoord.alignment = TextAnchor.MiddleLeft;
             cellCoord.rectTransform.anchorMin = Vector2.zero;
             cellCoord.rectTransform.anchorMax = Vector2.zero;
+            var cg = gameObj.AddComponent<CanvasGroup>();
+            cg.blocksRaycasts = false;
             gameObj.transform.SetParent(FSM.UI.transform, false);
             gameObj.SetActive(false);
         }

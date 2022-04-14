@@ -104,9 +104,10 @@ namespace PathOfWuxia
             {
                 num *= 1.5f;
             }
-            if (TimedValue.ContainsKey(wuxiaUnit))
+            if (TimedValue.TryGetValue(wuxiaUnit, out TimeInfo timeInfo))
             {
-                TimedValue[wuxiaUnit].value = (int)num;
+                timeInfo.value = (int)num;
+                timeInfo.begin = true;
             }
             else
             {
