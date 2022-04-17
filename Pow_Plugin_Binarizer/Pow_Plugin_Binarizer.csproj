@@ -366,6 +366,7 @@
     <Compile Include="GameExtensions\ModDataManager.cs" />
     <Compile Include="GameExtensions\ModExtensionSaveData.cs" />
     <Compile Include="GameExtensions\BattleResultAddParty.cs" />
+    <Compile Include="GameExtensions\ModSetSkillOrMantra.cs" />
     <Compile Include="GameExtensions\RewardDuelProperty.cs" />
     <Compile Include="GameExtensions\RewardUniquePropsFromProps.cs" />
     <Compile Include="GameExtensions\RewardUniqueEquipByValue.cs" />

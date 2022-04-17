@@ -630,9 +630,9 @@ namespace PathOfWuxia
                     ScheduleID = null;  //skip original load
                     return true;
                 }
-                catch
+                catch (Exception e)
                 {
-                    Debug.Log($"非老版战斗");
+                    Console.WriteLine($"非老版战斗. 错误=【{e}】");
                 }
 
                 try

@@ -55,11 +55,12 @@ namespace PathOfWuxia
                         break;
                     }
                 }
-                new SetNpcSkillEXP
+                new ModSetSkillOrMantra
                 {
                     method = Method.Add,
-                    npcId = user.Id,
-                    Id = id,
+                    characterInfoId = user.Id,
+                    skillOrMantraId = Id,
+                    isSkill = true,
                     value = value
                 }.GetValue();
                 result = true;
@@ -68,11 +69,13 @@ namespace PathOfWuxia
             {
                 if (!user.Skill.ContainsKey(this.Id))
                 {
-                    new SetNpcSkill
+                    new ModSetSkillOrMantra
                     {
                         method = Method.Add,
-                        npcId = user.Id,
-                        value = this.Id
+                        characterInfoId = user.Id,
+                        skillOrMantraId = Id,
+                        isSkill = true,
+                        value = 0
                     }.GetValue();
                 }
                 else
@@ -80,11 +83,12 @@ namespace PathOfWuxia
                     SkillData skillData = user.Skill[this.Id];
                     if (skillData.Item.RequireValue > 0)
                     {
-                        new SetNpcSkillEXP
+                        new ModSetSkillOrMantra
                         {
                             method = Method.Add,
-                            npcId = user.Id,
-                            Id = this.Id,
+                            characterInfoId = user.Id,
+                            skillOrMantraId = Id,
+                            isSkill = true,
                             value = 100
                         }.GetValue();
                     }
@@ -124,11 +128,12 @@ namespace PathOfWuxia
             {
                 int value = int.Parse(this.Id);
                 string id = user.CurrentMantra.Id;
-                new SetNpcMantraEXP
+                new ModSetSkillOrMantra
                 {
                     method = Method.Add,
-                    npcId = user.Id,
-                    Id = id,
+                    characterInfoId = user.Id,
+                    skillOrMantraId = Id,
+                    isSkill = false,
                     value = value
                 }.GetValue();
                 result = true;
@@ -137,21 +142,23 @@ namespace PathOfWuxia
             {
                 if (!user.Mantra.ContainsKey(this.Id))
                 {
-                    new SetNpcMantra
+                    new ModSetSkillOrMantra
                     {
                         method = Method.Add,
-                        npcId = user.Id,
-                        value = this.Id
+                        characterInfoId = user.Id,
+                        skillOrMantraId = Id,
+                        isSkill = false,
+                        value = 0
                     }.GetValue();
                 }
                 else
                 {
-                    MantraData mantraData = user.Mantra[this.Id];
-                    new SetNpcMantraEXP
+                    new ModSetSkillOrMantra
                     {
                         method = Method.Add,
-                        npcId = user.Id,
-                        Id = this.Id,
+                        characterInfoId = user.Id,
+                        skillOrMantraId = Id,
+                        isSkill = false,
                         value = 100
                     }.GetValue();
                 }

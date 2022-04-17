@@ -6,6 +6,7 @@ using Heluo.UI;
 using Heluo.Data;
 using Heluo.Manager;
 using UnityEngine.UI;
+using UnityEngine;
 
 namespace PathOfWuxia
 {
@@ -97,7 +98,7 @@ namespace PathOfWuxia
             foreach (CharacterMapping characterMapping2 in characterMapping)
             {
                 CharacterInfoData characterInfoData = Game.GameData.Character[characterMapping2.InfoId];
-                CharacterExteriorData characterExteriorData = Game.GameData.Exterior[characterMapping2.ExteriorId];
+                CharacterExteriorData characterExteriorData = Game.GameData.Exterior[characterMapping2.ExteriorId]; // 这里
                 list.Add(new PartyInfo
                 {
                     Protrait = characterExteriorData.Protrait,
@@ -111,6 +112,21 @@ namespace PathOfWuxia
             }
             Traverse.Create(__instance).Field("view").GetValue<UITeamMember>().UpdateProperty(list);
             return false;
+        }
+
+        /// <summary>
+        /// 养成UI超过数值上限的下标越界，懒得写，干脆换掉数组，加上100个
+        /// </summary>
+        [HarmonyPrefix, HarmonyPatch(typeof(WGValueRunBar), "SetCurrentValue", new Type[] { typeof(float) })]
+        public static bool WGValueRunBarFix_SetCurrentValue(WGValueRunBar __instance)
+        {
+            var valueColor = Traverse.Create(__instance).Field("valueColor").GetValue<Color[]>();
+            if (valueColor.Length == 5)
+            {
+                for (int i = 0; i < 100; ++i)
+                    valueColor.AddToArray(valueColor[4]);
+            }
+            return true;
         }
     }
 }

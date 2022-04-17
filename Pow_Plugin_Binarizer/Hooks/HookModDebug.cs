@@ -13,6 +13,9 @@ using Heluo.Utility;
 using Newtonsoft.Json;
 using Heluo.FSM.Main;
 using Heluo.UI;
+using Heluo.FSM.Battle;
+using UnityEngine.UI;
+using Heluo.Resource;
 
 namespace PathOfWuxia
 {
@@ -156,6 +159,45 @@ namespace PathOfWuxia
                 else
                 {
                     GlobalLib.ToFile(Game.Resource.LoadString(source), target);
+                }
+            }
+        }
+
+        // 显示格子坐标
+        private static BattleStateMachine FSM = null;
+        private static Text cellCoord = null;
+        [HarmonyPostfix, HarmonyPatch(typeof(WuxiaBattleManager), "InitBattle", new Type[] { typeof(BattleStateMachine), typeof(string), typeof(IDataProvider), typeof(IResourceProvider), typeof(Action<BillboardArg>) })]
+        public static void DebugPatch_Begin(ref WuxiaBattleManager __instance, BattleStateMachine bsm)
+        {
+            if (cellCoord)
+                cellCoord.Destroy();
+            FSM = bsm;
+            GameObject gameObj = new GameObject("CellCoord");
+            cellCoord = gameObj.AddComponent<Text>();
+            cellCoord.font = Game.Resource.Load<Font>("Assets/Font/kaiu.ttf");
+            cellCoord.alignment = TextAnchor.MiddleLeft;
+            cellCoord.rectTransform.anchorMin = Vector2.zero;
+            cellCoord.rectTransform.anchorMax = Vector2.zero;
+            var cg = gameObj.AddComponent<CanvasGroup>();
+            cg.blocksRaycasts = false;
+            gameObj.transform.SetParent(FSM.UI.transform, false);
+            gameObj.SetActive(false);
+        }
+        [HarmonyPostfix, HarmonyPatch(typeof(BattleStateMachine), "_rayCastWuxiaCell", new Type[] { typeof(float), typeof(float) })]
+        public static void DebugPatch_RayCast(ref WuxiaCell __result)
+        {
+            if (cellCoord)
+            {
+                if (DebugOn.Value && __result)
+                {
+                    cellCoord.text = $"{__result.Coord.Number} ({__result.Coord.X},{__result.Coord.Y},{__result.Coord.Z})";
+                    cellCoord.transform.position = Input.mousePosition;
+                    Debug.Log($"coord = {cellCoord.text}, point = {Input.mousePosition}");
+                    cellCoord.gameObject.SetActive(true);
+                }
+                else
+                {
+                    cellCoord.gameObject.SetActive(false);
                 }
             }
         }

@@ -47,34 +47,68 @@ namespace PathOfWuxia
             string[] characters = new string[] { GameConfig.Player, "in0196", "in0197", "in0101", "in0115" };
             for (int i = 0; i < characters.Length; i++)
             {
+                //修改每一个主角模型
                 CharacterExteriorData playerExteriorData = Game.GameData.Exterior[characters[i]];
+
+                //判断有没有该模型，如有则替换
                 if (playerExteriorData != null && !playerExteriorId.Value.Trim().IsNullOrEmpty())
                 {
-                    foreach (KeyValuePair<string, CharacterExterior> kv in Game.Data.Get<CharacterExterior>())
+                    string text = playerExteriorId.Value.Trim();
+                    bool hasModel = false;
+                    Gender gender = Gender.Male;
+                    Size size = Size.Free;
+                    for (int j = 0; j < 5; j++)
                     {
-                        if (kv.Value.Model == playerExteriorId.Value.Trim())
+                        for (int k = 0; k < 5; k++)
                         {
-                            playerExteriorData.Id = kv.Value.Id;
-                            playerExteriorData.Model = kv.Value.Model;
-                            playerExteriorData.Gender = kv.Value.Gender;
-                            playerExteriorData.Size = kv.Value.Size;
-                            playerExteriorData.Protrait = kv.Value.Protrait;
-                            Console.WriteLine("id:"+kv.Value.Id+ ",Model:" + kv.Value.Model+ ",Gender:" + kv.Value.Gender + ",Size:" + kv.Value.Size + ",Protrait:" + kv.Value.Protrait + ",");
+                            string text2 = string.IsNullOrEmpty(text) ? GameConfig.DefaultModelPath : string.Format(GameConfig.ModelPath, (Gender)j, (Size)k, text);
+                            GameObject gameObject = Game.Resource.Load<GameObject>(text2);
+                            if (gameObject != null)
+                            {
+                                hasModel = true;
+                                gender = (Gender)j;
+                                size = (Size)k;
+
+                                break;
+                            }
+                        }
+                        if (hasModel)
+                        {
                             break;
                         }
                     }
-                }
-                if (!playerPortraitOverride.Value.Trim().IsNullOrEmpty())
-                {
-                    foreach (KeyValuePair<string, CharacterExterior> kv in Game.Data.Get<CharacterExterior>())
+
+                    if (hasModel)
                     {
-                        if (kv.Value.Protrait == playerPortraitOverride.Value.Trim())
-                        {
-                            playerExteriorData.Protrait = kv.Value.Protrait;
-                            Console.WriteLine("Protrait:" + kv.Value.Protrait);
-                        }
+                        //playerExteriorData.Id = kv.Value.Id;
+                        playerExteriorData.Model = text;
+                        playerExteriorData.Gender = gender;
+                        playerExteriorData.Size = size;
+                        //playerExteriorData.Protrait = kv.Value.Protrait;
+                        //Console.WriteLine("id:"+kv.Value.Id+ ",Model:" + kv.Value.Model+ ",Gender:" + kv.Value.Gender + ",Size:" + kv.Value.Size + ",Protrait:" + kv.Value.Protrait + ",");
+                        //break;
                     }
                 }
+                //判断有没有该立绘，如有则替换
+                if (!playerPortraitOverride.Value.Trim().IsNullOrEmpty())
+                {
+                    string text = playerPortraitOverride.Value.Trim();
+                    bool hasPortrait = false;
+
+                    Sprite gameObject = Game.Resource.Load<Sprite>(string.Format(GameConfig.HalfProtraitPath, text));
+                    if (gameObject != null)
+                    {
+                        hasPortrait = true;
+                    }
+
+                    if (hasPortrait)
+                    {
+                        playerExteriorData.Protrait = text;
+                        //Console.WriteLine("id:"+kv.Value.Id+ ",Model:" + kv.Value.Model+ ",Gender:" + kv.Value.Gender + ",Size:" + kv.Value.Size + ",Protrait:" + kv.Value.Protrait + ",");
+                        //break;
+                    }
+                }
+                //修改姓名
                 if (!playerSurNameOverride.Value.Trim().IsNullOrEmpty())
                 {
                     playerExteriorData.SurName = playerSurNameOverride.Value.Trim();

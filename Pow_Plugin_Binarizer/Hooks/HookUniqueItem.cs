@@ -6,7 +6,6 @@ using MessagePack.Resolvers;
 using HarmonyLib;
 using System.Reflection;
 using Ninject.Activation;
-using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.Data;

@@ -30,7 +30,7 @@ namespace PathOfWuxia
 
 		public void OnRegister(PluginBinarizer plugin)
 		{
-			saveCount = plugin.Config.Bind("存档设定", "存档数量", 20, "扩充存档数量");
+			saveCount = plugin.Config.Bind("存档设定", "存档数量", 20, "扩充存档数量。最好关闭云存档，否则后期云存档满了可能无法自动存档");
 			remindBlankSaveCount = plugin.Config.Bind("存档设定", "自动存档剩余数量提示", false, "在自动存档剩余空白存档数量不足5个时弹窗提示");
 			jumpToLatestSave = plugin.Config.Bind("存档设定", "自动跳转到最新存档位置", false, "在存档数量太多的时候会有点作用");
 			pagination = plugin.Config.Bind("存档设定", "存档分页", false, "在存档数量太多的时候会有点作用");
