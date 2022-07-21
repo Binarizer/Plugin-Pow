@@ -14,6 +14,9 @@ using HarmonyLib;
 
 namespace PathOfWuxia
 {
+    /// <summary>
+    /// 整体替换
+    /// </summary>
     public class ModResourceProvider : ObjectResourceProvider
     {
         public ModResourceProvider(ICoroutineRunner runner, string modBaseDir, string[] modPaths) : base(runner)

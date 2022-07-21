@@ -9,7 +9,7 @@ using System.ComponentModel;
 
 namespace PathOfWuxia
 {
-    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer，修改 by 寻宇", "2.2.6")]
+    [BepInPlugin("binarizer.plugin.pow.function_sets", "功能合集 by Binarizer，修改 by 寻宇", "2.4.0")]
     public class PluginBinarizer : BaseUnityPlugin
     {
         /// <summary>
@@ -60,7 +60,7 @@ namespace PathOfWuxia
             {
                 DisplayNameAttribute displayName = (DisplayNameAttribute)hookType.GetCustomAttribute(typeof(DisplayNameAttribute));
                 DescriptionAttribute description = (DescriptionAttribute)hookType.GetCustomAttribute(typeof(DescriptionAttribute));
-                var adv1 = new ConfigDescription(description.Description, null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 4 });
+                var adv1 = new ConfigDescription(description.Description + "，重启游戏生效", null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 4 });
                 moduleEntries[hookType] = Config.Bind("模块选择", displayName.DisplayName, false, adv1);
                 Console.WriteLine($"计入模块 [{displayName.DisplayName}]");
             }

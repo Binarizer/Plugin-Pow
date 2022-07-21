@@ -1,8 +1,10 @@
-﻿using BepInEx.Configuration;
+﻿using Artemis;
+using BepInEx.Configuration;
 using HarmonyLib;
 using Heluo;
 using Heluo.Data;
 using Heluo.Features;
+using Heluo.Features.Wearing;
 using Heluo.Flow;
 using Heluo.UI;
 using Heluo.Utility;
@@ -217,6 +219,49 @@ namespace PathOfWuxia
                 }
             }
             return true;
+        }
+
+        // 修复某些人物模型无法调查的bug
+        [HarmonyPrefix, HarmonyPatch(typeof(CtrlTarget), "OnTargetChanged")]
+        public static bool CtrlTargetPatch_OnTargetChanged(CtrlTarget __instance,ref InteractiveInfo info)
+        {
+            Console.WriteLine("CtrlTargetPatch_OnTargetChanged start");
+
+            Entity playerEntity = Game.EntityManager.GetPlayerEntity();
+            AvatarComponent component = playerEntity.GetComponent<AvatarComponent>();
+            Vector3 position = playerEntity.GetComponent<ObjectComponent>().Model.transform.position;
+            Bounds bounds = new Bounds();
+            if (component[RendererType.head] != null)
+            {
+                bounds = component[RendererType.head].bounds;
+            }
+            else if(component[RendererType.hair] != null)
+            {
+                bounds = component[RendererType.hair].bounds;
+            }
+            else if (component[RendererType.body] != null)
+            {
+                bounds = component[RendererType.body].bounds;
+            }
+            float d = bounds.max.y - position.y + 0.5f;
+            Vector3 b = bounds.center - position;
+            b.y = 0f;
+            Traverse.Create(__instance).Field("worldPosition").SetValue(position + b + Vector3.up * d);
+            ClickType clickType = info.ClickType;
+            string id = string.Format("02004{0:000}", (int)clickType);
+            StringTable stringTable = Game.Data.Get<StringTable>(id);
+            string text = (stringTable != null) ? stringTable.Text : null;
+            string remarks = info.Remarks;
+            UITarget View = Traverse.Create(__instance).Field("View").GetValue<UITarget>();
+            View.UpdateView(new string[]
+            {
+                text,
+                remarks
+            }, string.Empty);
+
+            Console.WriteLine("CtrlTargetPatch_OnTargetChanged end");
+
+            return false;
         }
     }
 }

@@ -7,7 +7,6 @@ using System.Text;
 using System.Timers;
 using HarmonyLib;
 using UnityEngine;
-using BepInEx;
 using BepInEx.Configuration;
 using Heluo;
 using Heluo.UI;
@@ -19,7 +18,6 @@ using Heluo.Battle;
 using Heluo.Resource;
 using Heluo.Utility;
 using FileHelpers;
-using Newtonsoft.Json;
 
 namespace PathOfWuxia
 {
@@ -101,128 +99,103 @@ namespace PathOfWuxia
         }
 
         // 1 Mod支持增删表格(即多mod支持)
-        [HarmonyPrefix, HarmonyPatch(typeof(DataManager), "ReadData", new Type[] { typeof(string) })]
-        public static bool ModPatch_ReadData_Mod(ref DataManager __instance, string path)
+        [HarmonyPrefix, HarmonyPatch(typeof(DataManager), "Inital")]
+        public static bool ModPatch_Inital_Mod(ref DataManager __instance)
         {
-            var dict = Traverse.Create(__instance).Field("dict");
-            var resource = Traverse.Create(__instance).Field("resource").GetValue<IResourceProvider>();
-            path = __instance.CheckPath(path);
-            dict.SetValue(new Dictionary<Type, IDictionary>());
-            Type type = typeof(Item);
-            foreach (Type itemType in from t in type.Assembly.GetTypes()
-                                      where t.IsSubclassOf(type) && !t.HasAttribute<Hidden>(false)
-                                      select t)
-            {
-                Type typeItemDic = typeof(CsvDataSource<>).MakeGenericType(new Type[]
-                {
-                    itemType
-                });
-                try
-                {
-                    byte[] fileData = null;
-                    IDictionary itemDic;
-                    if (!itemType.HasAttribute<JsonConfig>())
-                    {
-                        fileData = resource.LoadBytes(path + itemType.Name + ".txt");
-                    }
-                    if (fileData != null)
-                    {
-                        // 主数据 *.txt
-                        itemDic = (Activator.CreateInstance(typeItemDic, new object[] { fileData }) as IDictionary);
+            if (GlobalLib.ModResource == null)
+                return true;
 
+            string path = "config/textfiles/";
+            var dict = Traverse.Create(__instance).Field("dict").GetValue<IDictionary<Type, IDictionary>>();
+            foreach (var keyValuePair in dict)
+            {
+                if (keyValuePair.Value != null && !keyValuePair.Key.HasAttribute<JsonConfig>())
+                {
+                    var itemType = keyValuePair.Key;
+                    var itemDic = keyValuePair.Value;
+
+                    try
+                    {
+                        // 替换数据 *.txt
+                        foreach (var dir in GlobalLib.ModResource.ModDirectories)
+                        {
+                            byte[] fileData = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + ".txt");
+                            if (fileData != null)
+                            {
+                                Console.WriteLine($"[{dir}]替换数据{path + itemType.Name + ".txt"}");
+                                itemDic = (Activator.CreateInstance(itemDic.GetType(), new object[]
+                                {
+                                    fileData
+                                }) as IDictionary);
+                            }
+                        }
                         // 补充数据 *_modify.txt
-                        if (GlobalLib.ModResource != null)
+                        foreach (var dir in GlobalLib.ModResource.ModDirectories)
                         {
-                            foreach (var dir in GlobalLib.ModResource.ModDirectories)
+                            byte[] fileDataModify = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + "_modify.txt");
+                            if (fileDataModify != null)
                             {
-                                byte[] fileDataModify = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + "_modify.txt");
-                                if (fileDataModify != null)
+                                Console.WriteLine($"[{dir}]补充数据{path + itemType.Name + "_modify.txt"}");
+                                IDictionary dicModify = (Activator.CreateInstance(itemDic.GetType(), new object[]
                                 {
-                                    IDictionary dicModify = (Activator.CreateInstance(typeItemDic, new object[]
-                                    {
-                                        fileDataModify
-                                    }) as IDictionary);
-                                    foreach (var key in dicModify.Keys)
-                                    {
-                                        if (itemDic.Contains(key))
-                                            itemDic[key] = dicModify[key];
-                                        else
-                                            itemDic.Add(key, dicModify[key]);
-                                    }
+                                    fileDataModify
+                                }) as IDictionary);
+                                foreach (var key in dicModify.Keys)
+                                {
+                                    itemDic[key] = dicModify[key];
                                 }
                             }
-                            // 删除数据 *_remove.txt
-                            foreach (var dir in GlobalLib.ModResource.ModDirectories)
+                        }
+                        // 删除数据 *_remove.txt
+                        foreach (var dir in GlobalLib.ModResource.ModDirectories)
+                        {
+                            byte[] fileDataRemove = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + "_remove.txt");
+                            if (fileDataRemove != null)
                             {
-                                byte[] fileDataRemove = GlobalLib.ModResource.LoadBytesFromDir(dir, path + itemType.Name + "_remove.txt");
-                                if (fileDataRemove != null)
+                                Console.WriteLine($"[{dir}]删除数据{path + itemType.Name + "_remove.txt"}");
+                                IDictionary dicRemove = (Activator.CreateInstance(itemDic.GetType(), new object[]
                                 {
-                                    IDictionary dicRemove = (Activator.CreateInstance(typeItemDic, new object[]
-                                    {
-                                        fileDataRemove
-                                    }) as IDictionary);
-                                    foreach (var key in dicRemove.Keys)
-                                    {
-                                        if (itemDic.Contains(key))
-                                            itemDic.Remove(key);
-                                    }
+                                    fileDataRemove
+                                }) as IDictionary);
+                                foreach (var key in dicRemove.Keys)
+                                {
+                                    if (itemDic.Contains(key))
+                                        itemDic.Remove(key);
                                 }
                             }
                         }
                     }
-                    else
+                    catch (ConvertException ex)
                     {
-                        // json文件 *.json
-                        byte[] jsonData = resource.LoadBytes("Config/" + itemType.Name + ".json");
-                        if (jsonData != null)
+                        Console.WriteLine(string.Concat(new object[]
                         {
-                            string @string = Encoding.UTF8.GetString(jsonData);
-                            typeItemDic = typeof(Dictionary<,>).MakeGenericType(new Type[]
-                            {
-                                typeof(string),
-                                itemType
-                            });
-                            itemDic = (JsonConvert.DeserializeObject(@string, typeItemDic) as IDictionary);
-                        }
-                        else
-                        {
-                            // 没有对应文件
-                            Console.WriteLine("没找到该类型的数据：" + itemType.ToString());
-                            continue;
-                        }
+                            "解析Mod数据 ",
+                            itemType.Name,
+                            " 時發生錯誤 !!\r\n行數 : ",
+                            ex.LineNumber,
+                            ", 欄位 : ",
+                            ex.ColumnNumber,
+                            ", 類型 = ",
+                            ex.FieldType.Name,
+                            ", 名稱 = ",
+                            ex.FieldName,
+                            "\r\n",
+                            ex
+                        }));
                     }
-                    dict.GetValue<IDictionary>().Add(itemType, itemDic);
-                }
-                catch (ConvertException ex)
-                {
-                    Console.WriteLine(string.Concat(new object[]
+                    catch (Exception ex2)
                     {
-                        "解析 ",
-                        itemType.Name,
-                        " 時發生錯誤 !!\r\n行數 : ",
-                        ex.LineNumber,
-                        ", 欄位 : ",
-                        ex.ColumnNumber,
-                        ", 類型 = ",
-                        ex.FieldType.Name,
-                        ", 名稱 = ",
-                        ex.FieldName,
-                        "\r\n",
-                        ex
-                    }));
-                }
-                catch (Exception ex2)
-                {
-                    Console.WriteLine(string.Concat(new object[]
-                    {
-                        "解析 ",
-                        itemType.Name,
-                        " 時發生錯誤 !!\r\n",
-                        ex2
-                    }));
+                        Console.WriteLine(string.Concat(new object[]
+                        {
+                            "解析Mod数据 ",
+                            itemType.Name,
+                            " 時發生錯誤 !!\r\n",
+                            ex2
+                        }));
+                    }
                 }
             }
-            return false;
+            return true;
         }
 
         // 2 修改主题音乐

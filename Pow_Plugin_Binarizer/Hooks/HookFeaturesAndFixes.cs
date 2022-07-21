@@ -98,7 +98,7 @@ namespace PathOfWuxia
             foreach (CharacterMapping characterMapping2 in characterMapping)
             {
                 CharacterInfoData characterInfoData = Game.GameData.Character[characterMapping2.InfoId];
-                CharacterExteriorData characterExteriorData = Game.GameData.Exterior[characterMapping2.ExteriorId]; // 这里
+                CharacterExteriorData characterExteriorData = Game.GameData.Exterior[characterMapping2.ExteriorId];
                 list.Add(new PartyInfo
                 {
                     Protrait = characterExteriorData.Protrait,

@@ -17,7 +17,7 @@ namespace PathOfWuxia
         public static TimeStage timeStage;
         public void OnRegister(PluginBinarizer plugin)
         {
-            lockTime = plugin.Config.Bind("游戏设定", "锁定昼夜时间", false, "锁定昼夜时间");
+            lockTime = plugin.Config.Bind("游戏设定", "锁定昼夜时间", false, "锁定昼夜时间，主线时开启可能卡场景");
         }
         [HarmonyPrefix, HarmonyPatch(typeof(NurturanceLoadScenesAction), "GetValue")]
         public static bool NurturanceLoadScenesActionPatch_GetValue(NurturanceLoadScenesAction __instance)

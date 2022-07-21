@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using BepInEx.Configuration;
 using HarmonyLib;
-using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
-using Heluo;
-using Heluo.Resource;
 using Heluo.Battle;
 using Heluo.FSM.Battle;
-using Heluo.UI;
 using Heluo.Data;
-using Heluo.Utility;
 using System.ComponentModel;
+using UnityEngine;
+using Heluo;
+using Heluo.Resource;
+using System.Linq;
+using Heluo.UI;
+using UnityEngine.EventSystems;
+using Heluo.Utility;
+using System.Reflection;
+using System.Threading.Tasks;
 
 namespace PathOfWuxia
 {
@@ -524,7 +524,7 @@ namespace PathOfWuxia
                 return cell.Unit == Timed_Current();
             return true;
         }
-
+        
         // 5. 状态机！！
         [HarmonyPrefix, HarmonyPatch(typeof(BattleState), "FirstUnitSelect")]
         public static bool TimedPatch_FirstUnit(BattleState __instance)
@@ -582,12 +582,12 @@ namespace PathOfWuxia
                         Timed_SetBeginTurn(wuxiaUnit, false);
                     }
                     BM.OnBattleEvent(BattleEventToggleTime.BeginUnit, Array.Empty<object>());
-                    WaitClick = new Action( ()=>
+                    WaitClick = new Action(() =>
                     {
                         UnitWantWait = true;
                         UnitIsRest = false;
                         __instance.SendEvent("FINISHED");
-                    } );
+                    });
                 }
             }
             else
@@ -599,9 +599,11 @@ namespace PathOfWuxia
                 t.Method("InitBeginUnit").GetValue();// this.InitBeginUnit();
                 FSM.UI.SkillClick = new Action<SkillData>(__instance.OnSkillClick);
                 FSM.UI.RestClick = new Action(__instance.OnRestClick);
+                FSM.UI.AllResetClick = new Action(__instance.OnAllRestClick);
             }
             return false;
         }
+
 
         [HarmonyPrefix, HarmonyPatch(typeof(EndUnit), "OnEnable")]
         public static bool TimedPatch_End1(EndUnit __instance)
@@ -636,6 +638,7 @@ namespace PathOfWuxia
             if (!BM.IsEvent)
             {
                 var eventArgs = Traverse.Create(FSM).Property("eventArgs");
+
                 if (selected.GetValue<WuxiaUnit>() != null)
                 {
                     WuxiaUnit selectedUnit = selected.GetValue<WuxiaUnit>();
@@ -914,14 +917,14 @@ namespace PathOfWuxia
             {
                 WuxiaUnit unit = Timed_Current();
                 List<WuxiaUnit> second = (from u in BM.WuxiaUnits
-                                            where u.faction == unit.faction
-                                            select u).ToList<WuxiaUnit>();
+                                          where u.faction == unit.faction
+                                          select u).ToList<WuxiaUnit>();
                 BM.WuxiaUnits.Except(second).ToList<WuxiaUnit>();
                 if (Timed_GetBeginTurn(unit))
                 {
                     unit.OnBufferEvent(BufferTiming.BeginTurn);
                     unit.CalculationNumber_Of_Movements();
-                    Timed_SetBeginTurn(unit,false);
+                    Timed_SetBeginTurn(unit, false);
                 }
                 BM.OnBattleEvent(BattleEventToggleTime.BeginUnit, Array.Empty<object>());
                 if (BM.IsEvent)
@@ -939,7 +942,7 @@ namespace PathOfWuxia
                         continue;
                     }
                     unit.OnBufferEvent(BufferTiming.BeginUnit);
-                    if (!t.Field("disable").GetValue<bool>())   //*state.disable*/
+                    if (!t.Field("disable").GetValue<bool>())   //*state.disable*//*
                     {
                         BM.CameraLookAt = unit.Cell.transform.position;
                         List<WuxiaCell> moveInRange = t.Method("ShowMoveRange", unit).GetValue<List<WuxiaCell>>();//state.ShowMoveRange(unit);
@@ -1016,7 +1019,7 @@ namespace PathOfWuxia
                             List<WuxiaUnit> list2 = new List<WuxiaUnit>();
                             for (int i = 0; i < targetInRange.Count; i++)
                             {
-                                if (targetInRange[i].Unit != null && Traverse.Create(BM).Method("CheckSkillUnit", targetInRange[i], useinfo.skill, unit).GetValue<bool>()/*BM.CheckSkillUnit(targetInRange[i], useinfo.skill, unit)*/ && !list2.Contains(targetInRange[i].Unit))
+                                if (targetInRange[i].Unit != null && Traverse.Create(BM).Method("CheckSkillUnit", targetInRange[i], useinfo.skill, unit).GetValue<bool>()/*BM.CheckSkillUnit(targetInRange[i], useinfo.skill, unit)*/  && !list2.Contains(targetInRange[i].Unit))
                                 {
                                     list2.Add(targetInRange[i].Unit);
                                 }
